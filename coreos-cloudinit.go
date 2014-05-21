@@ -1,13 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 
 	"github.com/coreos/coreos-cloudinit/datasource"
 	"github.com/coreos/coreos-cloudinit/initialize"
+	"github.com/coreos/coreos-cloudinit/network"
 	"github.com/coreos/coreos-cloudinit/system"
 )
 
@@ -28,11 +32,17 @@ func main() {
 	var file string
 	flag.StringVar(&file, "from-file", "", "Read user-data from provided file")
 
+	var clouddrive string
+	flag.StringVar(&clouddrive, "from-clouddrive", "", "Read user-data from provided openstack cloud-drive directory")
+
 	var url string
 	flag.StringVar(&url, "from-url", "", "Download user-data from provided url")
 
 	var useProcCmdline bool
 	flag.BoolVar(&useProcCmdline, "from-proc-cmdline", false, fmt.Sprintf("Parse %s for '%s=<url>', using the cloud-config served by an HTTP GET to <url>", datasource.ProcCmdlineLocation, datasource.ProcCmdlineCloudConfigFlag))
+
+	var convertNetwork bool
+	flag.BoolVar(&convertNetwork, "convert-network", false, "Read the network config provided and translate it into networkd unit files (requires the --from-clouddrive flag)")
 
 	var workspace string
 	flag.StringVar(&workspace, "workspace", "/var/lib/coreos-cloudinit", "Base directory coreos-cloudinit should use to store data")
@@ -52,10 +62,17 @@ func main() {
 		ds = datasource.NewLocalFile(file)
 	} else if url != "" {
 		ds = datasource.NewMetadataService(url)
+	} else if clouddrive != "" {
+		ds = datasource.NewCloudDrive(clouddrive)
 	} else if useProcCmdline {
 		ds = datasource.NewProcCmdline()
 	} else {
-		fmt.Println("Provide one of --from-file, --from-url or --from-proc-cmdline")
+		fmt.Println("Provide one of --from-file, --from-clouddrive, --from-url or --from-proc-cmdline")
+		os.Exit(1)
+	}
+
+	if convertNetwork && ds.Type() != "cloud-drive" {
+		fmt.Println("--convert-network flag requires the use of --from-clouddrive")
 		os.Exit(1)
 	}
 
@@ -110,5 +127,44 @@ func main() {
 
 	if err != nil {
 		log.Fatalf("Failed resolving user-data: %v", err)
+	}
+
+	if clouddrive == "" {
+		return
+	}
+
+	metadataBytes, err := ioutil.ReadFile(path.Join(clouddrive, "latest", "meta_data.json"))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	var metadata struct {
+		NetworkConfig struct {
+			ContentPath string `json:"content_path"`
+		} `json:"network_config"`
+	}
+	if err := json.Unmarshal(metadataBytes, &metadata); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	if configPath := metadata.NetworkConfig.ContentPath; configPath != "" {
+		netconfBytes, err := ioutil.ReadFile(path.Join(clouddrive, configPath))
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		interfaces, err := network.ParseConfig(string(netconfBytes))
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err := network.WriteConfigs(path.Join(workspace, "network"), interfaces); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 }
