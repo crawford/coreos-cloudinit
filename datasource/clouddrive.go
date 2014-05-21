@@ -1,13 +1,14 @@
 package datasource
 
-import(
+import (
 	"io/ioutil"
+	"os"
 	"path"
 )
 
 const (
-	Path = "latest"
-	File = "user-data"
+	latestPath       = "openstack/latest"
+	userDataFilename = "user-data"
 )
 
 type cloudDrive struct {
@@ -19,7 +20,11 @@ func NewCloudDrive(path string) *cloudDrive {
 }
 
 func (self *cloudDrive) Fetch() ([]byte, error) {
-	return ioutil.ReadFile(path.Join(self.path, Path, File))
+	data, err := ioutil.ReadFile(path.Join(self.path, latestPath, userDataFilename))
+	if os.IsNotExist(err) {
+		err = nil
+	}
+	return data, err
 }
 
 func (self *cloudDrive) Type() string {

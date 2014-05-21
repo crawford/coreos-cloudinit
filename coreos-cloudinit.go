@@ -33,7 +33,7 @@ func main() {
 	flag.StringVar(&file, "from-file", "", "Read user-data from provided file")
 
 	var clouddrive string
-	flag.StringVar(&clouddrive, "from-clouddrive", "", "Read user-data from provided openstack cloud-drive directory")
+	flag.StringVar(&clouddrive, "from-clouddrive", "", "Read user-data from provided cloud-drive")
 
 	var url string
 	flag.StringVar(&url, "from-url", "", "Download user-data from provided url")
@@ -88,49 +88,48 @@ func main() {
 	}
 
 	if len(userdataBytes) == 0 {
-		log.Printf("No user data to handle, exiting.")
-		os.Exit(0)
-	}
+		log.Printf("No user data to handle.")
+	} else {
+		env := initialize.NewEnvironment("/", workspace)
 
-	env := initialize.NewEnvironment("/", workspace)
+		userdata := string(userdataBytes)
+		userdata = env.Apply(userdata)
 
-	userdata := string(userdataBytes)
-	userdata = env.Apply(userdata)
-
-	parsed, err := initialize.ParseUserData(userdata)
-	if err != nil {
-		log.Printf("Failed parsing user-data: %v", err)
-		if ignoreFailure {
-			os.Exit(0)
-		} else {
-			os.Exit(1)
+		parsed, err := initialize.ParseUserData(userdata)
+		if err != nil {
+			log.Printf("Failed parsing user-data: %v", err)
+			if ignoreFailure {
+				os.Exit(0)
+			} else {
+				os.Exit(1)
+			}
 		}
-	}
 
-	err = initialize.PrepWorkspace(env.Workspace())
-	if err != nil {
-		log.Fatalf("Failed preparing workspace: %v", err)
-	}
-
-	switch t := parsed.(type) {
-	case initialize.CloudConfig:
-		err = initialize.Apply(t, env)
-	case system.Script:
-		var path string
-		path, err = initialize.PersistScriptInWorkspace(t, env.Workspace())
-		if err == nil {
-			var name string
-			name, err = system.ExecuteScript(path)
-			initialize.PersistUnitNameInWorkspace(name, workspace)
+		err = initialize.PrepWorkspace(env.Workspace())
+		if err != nil {
+			log.Fatalf("Failed preparing workspace: %v", err)
 		}
-	}
 
-	if err != nil {
-		log.Fatalf("Failed resolving user-data: %v", err)
+		switch t := parsed.(type) {
+		case initialize.CloudConfig:
+			err = initialize.Apply(t, env)
+		case system.Script:
+			var path string
+			path, err = initialize.PersistScriptInWorkspace(t, env.Workspace())
+			if err == nil {
+				var name string
+				name, err = system.ExecuteScript(path)
+				initialize.PersistUnitNameInWorkspace(name, workspace)
+			}
+		}
+
+		if err != nil {
+			log.Fatalf("Failed resolving user-data: %v", err)
+		}
 	}
 
 	if clouddrive == "" {
-		return
+		os.Exit(0)
 	}
 
 	metadataBytes, err := ioutil.ReadFile(path.Join(clouddrive, "latest", "meta_data.json"))
