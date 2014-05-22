@@ -132,7 +132,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	metadataBytes, err := ioutil.ReadFile(path.Join(clouddrive, "latest", "meta_data.json"))
+	openstackRoot := path.Join(clouddrive, "openstack")
+
+	metadataBytes, err := ioutil.ReadFile(path.Join(openstackRoot, "latest", "meta_data.json"))
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -149,7 +151,7 @@ func main() {
 	}
 
 	if configPath := metadata.NetworkConfig.ContentPath; configPath != "" {
-		netconfBytes, err := ioutil.ReadFile(path.Join(clouddrive, configPath))
+		netconfBytes, err := ioutil.ReadFile(path.Join(openstackRoot, configPath))
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -161,7 +163,19 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := network.WriteConfigs(path.Join(workspace, "network"), interfaces); err != nil {
+		if err := system.WriteNetworkdConfigs(interfaces); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		defer system.RestartNetworkd()
+
+		if err := system.DownNetworkInterfaces(interfaces); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		if err := system.Probe8012q(); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
