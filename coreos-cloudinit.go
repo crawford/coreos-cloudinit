@@ -66,7 +66,7 @@ func main() {
 	}
 
 	if convertNetconf != "" && configdrive == "" {
-		fmt.Println("-convert-netconf flag requires the use of -from-configdrive")
+		fmt.Println("-convert-netconf flag requires -from-configdrive")
 		os.Exit(1)
 	}
 
@@ -92,7 +92,7 @@ func main() {
 	env := initialize.NewEnvironment("/", workspace)
 	if len(userdataBytes) > 0 {
 		if err := processUserdata(string(userdataBytes), env); err != nil {
-			fmt.Printf("Failed resolving user-data: %v\n", err)
+			fmt.Printf("Failed to process user-data: %v\n", err)
 			if !ignoreFailure {
 				os.Exit(1)
 			}
@@ -144,7 +144,8 @@ func processUserdata(userdata string, env *initialize.Environment) error {
 
 func processNetconf(convertNetconf, configdrive string) error {
 	openstackRoot := path.Join(configdrive, "openstack")
-	metadataBytes, err := ioutil.ReadFile(path.Join(openstackRoot, "latest/meta_data.json"))
+	metadataFilename := path.Join(openstackRoot, "latest", "meta_data.json")
+	metadataBytes, err := ioutil.ReadFile(metadataFilename)
 	if err != nil {
 		return err
 	}
@@ -159,6 +160,7 @@ func processNetconf(convertNetconf, configdrive string) error {
 	}
 	configPath := metadata.NetworkConfig.ContentPath
 	if configPath == "" {
+		fmt.Printf("No network config specified in %q.\n", metadataFilename)
 		return nil
 	}
 
@@ -172,7 +174,7 @@ func processNetconf(convertNetconf, configdrive string) error {
 	case "debian":
 		interfaces, err = network.ProcessDebianNetconf(string(netconfBytes))
 	default:
-		return fmt.Errorf("Unsupported network config format '%s'", convertNetconf)
+		return fmt.Errorf("Unsupported network config format %q", convertNetconf)
 	}
 
 	if err != nil {
