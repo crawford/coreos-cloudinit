@@ -116,7 +116,7 @@ func buildInterfaces(stanzas []*stanzaInterface) []InterfaceGenerator {
 
 	physicals := make(map[string]*physicalInterface)
 	for _, p := range physicalStanzas {
-		if p.name == "lo" {
+		if _, ok := p.configMethod.(configMethodLoopback); ok {
 			continue
 		}
 		physicals[p.name] = &physicalInterface{
