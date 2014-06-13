@@ -6,6 +6,7 @@ import (
 	"net"
 	"os/exec"
 	"path"
+	"time"
 
 	"github.com/coreos/coreos-cloudinit/network"
 	"github.com/coreos/coreos-cloudinit/third_party/github.com/dotcloud/docker/pkg/netlink"
@@ -17,6 +18,10 @@ const (
 
 func RestartNetwork(interfaces []network.InterfaceGenerator) (err error) {
 	defer func() {
+		if e := restartNetworkd(); e != nil {
+			err = e
+		}
+		time.Sleep(15*time.Second)
 		if e := restartNetworkd(); e != nil {
 			err = e
 		}
