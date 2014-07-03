@@ -10,23 +10,17 @@ import (
 	"github.com/coreos/coreos-cloudinit/pkg"
 )
 
-// metadataService retrieves metadata from either an OpenStack[1] (2012-08-10)
-// or EC2[2] (2009-04-04) compatible endpoint. It will first attempt to
-// directly retrieve a JSON blob from the OpenStack endpoint. If that fails
-// with a 404, it then attempts to retrieve metadata bit-by-bit from the EC2
-// endpoint, and populates that into an equivalent JSON blob. metadataService
-// also checks for userdata from EC2 and, if that fails with a 404, OpenStack.
+// metadataService retrieves metadata and userdata from an EC2[1] (2009-04-04)
+// compatible endpoint. It attempts to retrieve metadata bit-by-bit from the
+// EC2 endpoint, and populates that into an equivalent JSON blob.
 //
-// [1] http://docs.openstack.org/grizzly/openstack-compute/admin/content/metadata-service.html
-// [2] http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AESDG-chapter-instancedata.html#instancedata-data-categories
+// [1] http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AESDG-chapter-instancedata.html#instancedata-data-categories
 
 const (
-	BaseUrl              = "http://169.254.169.254/"
-	Ec2ApiVersion        = "2009-04-04"
-	Ec2UserdataUrl       = BaseUrl + Ec2ApiVersion + "/user-data"
-	Ec2MetadataUrl       = BaseUrl + Ec2ApiVersion + "/meta-data"
-	OpenstackApiVersion  = "openstack/2012-08-10"
-	OpenstackUserdataUrl = BaseUrl + OpenstackApiVersion + "/user_data"
+	BaseUrl     = "http://169.254.169.254/"
+	ApiVersion  = "2009-04-04"
+	UserdataUrl = BaseUrl + ApiVersion + "/user-data"
+	MetadataUrl = BaseUrl + ApiVersion + "/meta-data"
 )
 
 type metadataService struct{}
@@ -59,13 +53,13 @@ func (ms *metadataService) FetchMetadata() ([]byte, error) {
 
 func (ms *metadataService) FetchUserdata() ([]byte, error) {
 	client := pkg.NewHttpClient()
-	if data, err := client.GetRetry(Ec2UserdataUrl); err == nil {
+	if data, err := client.GetRetry(UserdataUrl); err == nil {
 		return data, err
 	} else if _, ok := err.(pkg.ErrTimeout); ok {
 		return data, err
 	}
 
-	if data, err := client.GetRetry(OpenstackUserdataUrl); err == nil {
+	if data, err := client.GetRetry(UserdataUrl); err == nil {
 		return data, err
 	} else if _, ok := err.(pkg.ErrNotFound); ok {
 		return []byte{}, nil
@@ -80,7 +74,7 @@ func (ms *metadataService) Type() string {
 
 func fetchMetadata(client getter) ([]byte, error) {
 	attrs := make(map[string]interface{})
-	if keynames, err := fetchAttributes(client, fmt.Sprintf("%s/public-keys", Ec2MetadataUrl)); err == nil {
+	if keynames, err := fetchAttributes(client, fmt.Sprintf("%s/public-keys", MetadataUrl)); err == nil {
 		keyIDs := make(map[string]string)
 		for _, keyname := range keynames {
 			tokens := strings.SplitN(keyname, "=", 2)
@@ -92,7 +86,7 @@ func fetchMetadata(client getter) ([]byte, error) {
 
 		keys := make(map[string]string)
 		for name, id := range keyIDs {
-			sshkey, err := fetchAttribute(client, fmt.Sprintf("%s/public-keys/%s/openssh-key", Ec2MetadataUrl, id))
+			sshkey, err := fetchAttribute(client, fmt.Sprintf("%s/public-keys/%s/openssh-key", MetadataUrl, id))
 			if err != nil {
 				return nil, err
 			}
@@ -104,25 +98,25 @@ func fetchMetadata(client getter) ([]byte, error) {
 		return nil, err
 	}
 
-	if hostname, err := fetchAttribute(client, fmt.Sprintf("%s/hostname", Ec2MetadataUrl)); err == nil {
+	if hostname, err := fetchAttribute(client, fmt.Sprintf("%s/hostname", MetadataUrl)); err == nil {
 		attrs["hostname"] = hostname
 	} else if _, ok := err.(pkg.ErrNotFound); !ok {
 		return nil, err
 	}
 
-	if localAddr, err := fetchAttribute(client, fmt.Sprintf("%s/local-ipv4", Ec2MetadataUrl)); err == nil {
+	if localAddr, err := fetchAttribute(client, fmt.Sprintf("%s/local-ipv4", MetadataUrl)); err == nil {
 		attrs["local-ipv4"] = localAddr
 	} else if _, ok := err.(pkg.ErrNotFound); !ok {
 		return nil, err
 	}
 
-	if publicAddr, err := fetchAttribute(client, fmt.Sprintf("%s/public-ipv4", Ec2MetadataUrl)); err == nil {
+	if publicAddr, err := fetchAttribute(client, fmt.Sprintf("%s/public-ipv4", MetadataUrl)); err == nil {
 		attrs["public-ipv4"] = publicAddr
 	} else if _, ok := err.(pkg.ErrNotFound); !ok {
 		return nil, err
 	}
 
-	if content_path, err := fetchAttribute(client, fmt.Sprintf("%s/network_config/content_path", Ec2MetadataUrl)); err == nil {
+	if content_path, err := fetchAttribute(client, fmt.Sprintf("%s/network_config/content_path", MetadataUrl)); err == nil {
 		attrs["network_config"] = map[string]string{
 			"content_path": content_path,
 		}
