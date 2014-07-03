@@ -240,7 +240,7 @@ func selectDatasource(sources []datasource.Datasource) datasource.Datasource {
 				select {
 				case <-stop:
 					return
-				case <-time.Tick(duration):
+				case <-time.After(duration):
 					duration = pkg.ExpBackoff(duration, datasourceMaxInterval)
 				}
 			}
@@ -257,7 +257,7 @@ func selectDatasource(sources []datasource.Datasource) datasource.Datasource {
 	select {
 	case s = <-ds:
 	case <-done:
-	case <-time.Tick(datasourceTimeout):
+	case <-time.After(datasourceTimeout):
 	}
 
 	close(stop)
