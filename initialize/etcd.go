@@ -2,8 +2,6 @@ package initialize
 
 import (
 	"errors"
-	"fmt"
-	"reflect"
 
 	"github.com/coreos/coreos-cloudinit/system"
 )
@@ -40,24 +38,13 @@ type EtcdEnvironment struct {
 }
 
 func (ee EtcdEnvironment) String() string {
-	eet := reflect.TypeOf(ee)
-	eev := reflect.ValueOf(ee)
-
-	out := "[Service]\n"
-	for i := 0; i < eet.NumField(); i++ {
-		val := eev.Field(i).String()
-		if val != "" {
-			key := eet.Field(i).Tag.Get("env")
-			out += fmt.Sprintf("Environment=\"%s=%s\"\n", key, val)
-		}
-	}
-	return out
+	return environmentString(ee)
 }
 
 // Units creates a Unit file drop-in for etcd, using any configured
 // options and adding a default MachineID if unset.
 func (ee EtcdEnvironment) Units(root string) ([]system.Unit, error) {
-	if ee.len() == 0 {
+	if environmentLen(ee) == 0 {
 		return nil, nil
 	}
 
@@ -78,16 +65,4 @@ func (ee EtcdEnvironment) Units(root string) ([]system.Unit, error) {
 		Content: ee.String(),
 	}
 	return []system.Unit{etcd}, nil
-}
-
-func (ee EtcdEnvironment) len() int {
-	eev := reflect.ValueOf(ee)
-
-	count := 0
-	for i := 0; i < eev.NumField(); i++ {
-		if eev.Field(i).String() != "" {
-			count++
-		}
-	}
-	return count
 }

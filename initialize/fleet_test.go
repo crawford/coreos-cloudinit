@@ -1,43 +1,46 @@
 package initialize
 
-import "testing"
+import (
+	"reflect"
+	"testing"
 
-func TestFleetEnvironment(t *testing.T) {
-	cfg := make(FleetEnvironment, 0)
-	cfg["public-ip"] = "12.34.56.78"
-
-	env := cfg.String()
-
-	expect := `[Service]
-Environment="FLEET_PUBLIC_IP=12.34.56.78"
-`
-
-	if env != expect {
-		t.Errorf("Generated environment:\n%s\nExpected environment:\n%s", env, expect)
-	}
-}
+	"github.com/coreos/coreos-cloudinit/system"
+)
 
 func TestFleetUnit(t *testing.T) {
-	cfg := make(FleetEnvironment, 0)
-	uu, err := cfg.Units("/")
-	if len(uu) != 0 {
-		t.Errorf("unexpectedly generated unit with empty FleetEnvironment")
-	}
-
-	cfg["public-ip"] = "12.34.56.78"
-
-	uu, err = cfg.Units("/")
-	if err != nil {
-		t.Errorf("error generating fleet unit: %v", err)
-	}
-	if len(uu) != 1 {
-		t.Fatalf("expected 1 unit generated, got %d", len(uu))
-	}
-	u := uu[0]
-	if !u.Runtime {
-		t.Errorf("bad Runtime for generated fleet unit!")
-	}
-	if !u.DropIn {
-		t.Errorf("bad DropIn for generated fleet unit!")
+	for _, tt := range []struct {
+		cfg  FleetEnvironment
+		root string
+		uu   []system.Unit
+		err  error
+	}{
+		{
+			cfg:  FleetEnvironment{},
+			root: "/",
+		},
+		{
+			cfg: FleetEnvironment{
+				PublicIP: "12.34.56.78",
+			},
+			uu: []system.Unit{
+				{
+					Name: "fleet.service",
+					Content: `[Service]
+Environment="FLEET_PUBLIC_IP=12.34.56.78"
+`,
+					Runtime: true,
+					DropIn:  true,
+				},
+			},
+			root: "/",
+		},
+	} {
+		uu, err := tt.cfg.Units(tt.root)
+		if tt.err != err {
+			t.Errorf("bad error (%q): want %q, got %q", tt.cfg, tt.err, err)
+		}
+		if !reflect.DeepEqual(uu, tt.uu) {
+			t.Errorf("bad units (%q): want %q, got %q", tt.cfg, tt.uu, uu)
+		}
 	}
 }

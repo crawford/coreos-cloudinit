@@ -1,8 +1,10 @@
 package initialize
 
 import (
+	"fmt"
 	"os"
 	"path"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -105,15 +107,29 @@ func (e *Environment) DefaultEnvironmentFile() *system.EnvFile {
 	}
 }
 
-// normalizeSvcEnv standardizes the keys of the map (environment variables for a service)
-// by replacing any dashes with underscores and ensuring they are entirely upper case.
-// For example, "some-env" --> "SOME_ENV"
-func normalizeSvcEnv(m map[string]string) map[string]string {
-	out := make(map[string]string, len(m))
-	for key, val := range m {
-		key = strings.ToUpper(key)
-		key = strings.Replace(key, "-", "_", -1)
-		out[key] = val
+func environmentString(e interface{}) string {
+	et := reflect.TypeOf(e)
+	ev := reflect.ValueOf(e)
+
+	out := "[Service]\n"
+	for i := 0; i < et.NumField(); i++ {
+		val := ev.Field(i).String()
+		if val != "" {
+			key := et.Field(i).Tag.Get("env")
+			out += fmt.Sprintf("Environment=\"%s=%s\"\n", key, val)
+		}
 	}
 	return out
+}
+
+func environmentLen(e interface{}) int {
+	ev := reflect.ValueOf(e)
+
+	count := 0
+	for i := 0; i < ev.NumField(); i++ {
+		if ev.Field(i).String() != "" {
+			count++
+		}
+	}
+	return count
 }
