@@ -10,59 +10,32 @@ import (
 )
 
 func TestEtcdEnvironment(t *testing.T) {
-	cfg := make(EtcdEnvironment, 0)
-	cfg["discovery"] = "http://disco.example.com/foobar"
-	cfg["peer-bind-addr"] = "127.0.0.1:7002"
-
-	env := cfg.String()
-	expect := `[Service]
+	for _, tt := range []struct {
+		cfg EtcdEnvironment
+		env string
+	}{
+		{
+			EtcdEnvironment{
+				Discovery:    "http://disco.example.com/foobar",
+				PeerBindAddr: "127.0.0.1:7002",
+			},
+			`[Service]
 Environment="ETCD_DISCOVERY=http://disco.example.com/foobar"
 Environment="ETCD_PEER_BIND_ADDR=127.0.0.1:7002"
-`
-
-	if env != expect {
-		t.Errorf("Generated environment:\n%s\nExpected environment:\n%s", env, expect)
-	}
-}
-
-func TestEtcdEnvironmentDiscoveryURLTranslated(t *testing.T) {
-	cfg := make(EtcdEnvironment, 0)
-	cfg["discovery_url"] = "http://disco.example.com/foobar"
-	cfg["peer-bind-addr"] = "127.0.0.1:7002"
-
-	env := cfg.String()
-	expect := `[Service]
-Environment="ETCD_DISCOVERY=http://disco.example.com/foobar"
-Environment="ETCD_PEER_BIND_ADDR=127.0.0.1:7002"
-`
-
-	if env != expect {
-		t.Errorf("Generated environment:\n%s\nExpected environment:\n%s", env, expect)
-	}
-}
-
-func TestEtcdEnvironmentDiscoveryOverridesDiscoveryURL(t *testing.T) {
-	cfg := make(EtcdEnvironment, 0)
-	cfg["discovery_url"] = "ping"
-	cfg["discovery"] = "pong"
-	cfg["peer-bind-addr"] = "127.0.0.1:7002"
-
-	env := cfg.String()
-	expect := `[Service]
-Environment="ETCD_DISCOVERY=pong"
-Environment="ETCD_PEER_BIND_ADDR=127.0.0.1:7002"
-`
-
-	if env != expect {
-		t.Errorf("Generated environment:\n%s\nExpected environment:\n%s", env, expect)
+`,
+		},
+	} {
+		if env := tt.cfg.String(); env != tt.env {
+			t.Errorf("bad environment (%q): want %q, got %q", tt.cfg, tt.env, env)
+		}
 	}
 }
 
 func TestEtcdEnvironmentWrittenToDisk(t *testing.T) {
 	ee := EtcdEnvironment{
-		"name":           "node001",
-		"discovery":      "http://disco.example.com/foobar",
-		"peer-bind-addr": "127.0.0.1:7002",
+		Name:         "node001",
+		Discovery:    "http://disco.example.com/foobar",
+		PeerBindAddr: "127.0.0.1:7002",
 	}
 	dir, err := ioutil.TempDir(os.TempDir(), "coreos-cloudinit-")
 	if err != nil {
@@ -108,8 +81,8 @@ Environment="ETCD_DISCOVERY=http://disco.example.com/foobar"
 Environment="ETCD_NAME=node001"
 Environment="ETCD_PEER_BIND_ADDR=127.0.0.1:7002"
 `
-	if string(contents) != expect {
-		t.Fatalf("File has incorrect contents")
+	if c := string(contents); c != expect {
+		t.Fatalf("bad contents: want %q, got %q", expect, c)
 	}
 }
 
@@ -120,12 +93,14 @@ func TestEtcdEnvironmentEmptyNoOp(t *testing.T) {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 	if len(uu) > 0 {
-		t.Fatalf("Generated etcd units unexpectedly: %v")
+		t.Fatalf("Generated etcd units unexpectedly: %s", ee)
 	}
 }
 
 func TestEtcdEnvironmentWrittenToDiskDefaultToMachineID(t *testing.T) {
-	ee := EtcdEnvironment{"foo": "bar"}
+	ee := EtcdEnvironment{
+		Discovery: "http://disco.example.com/foobar",
+	}
 	dir, err := ioutil.TempDir(os.TempDir(), "coreos-cloudinit-")
 	if err != nil {
 		t.Fatalf("Unable to create tempdir: %v", err)
@@ -163,22 +138,10 @@ func TestEtcdEnvironmentWrittenToDiskDefaultToMachineID(t *testing.T) {
 	}
 
 	expect := `[Service]
-Environment="ETCD_FOO=bar"
+Environment="ETCD_DISCOVERY=http://disco.example.com/foobar"
 Environment="ETCD_NAME=node007"
 `
-	if string(contents) != expect {
-		t.Fatalf("File has incorrect contents")
-	}
-}
-
-func TestEtcdEnvironmentWhenNil(t *testing.T) {
-	// EtcdEnvironment will be a nil map if it wasn't in the yaml
-	var ee EtcdEnvironment
-	if ee != nil {
-		t.Fatalf("EtcdEnvironment is not nil")
-	}
-	uu, err := ee.Units("")
-	if len(uu) != 0 || err != nil {
-		t.Fatalf("Units returned value for nil input")
+	if c := string(contents); c != expect {
+		t.Fatalf("bad contents: want %q, got %q", expect, c)
 	}
 }
