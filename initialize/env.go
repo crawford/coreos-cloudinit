@@ -111,7 +111,7 @@ func environmentString(e interface{}) string {
 	et := reflect.TypeOf(e)
 	ev := reflect.ValueOf(e)
 
-	out := "[Service]\n"
+	var out string
 	for i := 0; i < et.NumField(); i++ {
 		val := ev.Field(i).String()
 		if val != "" {
@@ -125,7 +125,7 @@ func environmentString(e interface{}) string {
 func environmentLen(e interface{}) int {
 	ev := reflect.ValueOf(e)
 
-	count := 0
+	var count int
 	for i := 0; i < ev.NumField(); i++ {
 		if ev.Field(i).String() != "" {
 			count++

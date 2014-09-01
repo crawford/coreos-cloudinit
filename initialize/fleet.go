@@ -18,7 +18,7 @@ type FleetEnvironment struct {
 }
 
 func (fe FleetEnvironment) String() string {
-	return environmentString(fe)
+	return "[Service]\n" + environmentString(fe)
 }
 
 // Units generates a Unit file drop-in for fleet, if any fleet options were

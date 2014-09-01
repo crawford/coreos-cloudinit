@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/coreos-cloudinit/validate"
 	"github.com/coreos/coreos-cloudinit/datasource"
 	"github.com/coreos/coreos-cloudinit/datasource/configdrive"
 	"github.com/coreos/coreos-cloudinit/datasource/file"
@@ -19,6 +18,7 @@ import (
 	"github.com/coreos/coreos-cloudinit/initialize"
 	"github.com/coreos/coreos-cloudinit/pkg"
 	"github.com/coreos/coreos-cloudinit/system"
+	"github.com/coreos/coreos-cloudinit/validate"
 )
 
 const (

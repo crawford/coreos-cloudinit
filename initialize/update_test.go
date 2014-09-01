@@ -48,29 +48,19 @@ func TestEmptyUpdateConfig(t *testing.T) {
 }
 
 func TestInvalidUpdateOptions(t *testing.T) {
-	uon := &updateOption{
-		key:    "numbers",
-		prefix: "numero_",
-		valid:  []string{"one", "two"},
-	}
-	uoa := &updateOption{
-		key:    "any_will_do",
-		prefix: "any_",
-	}
-
-	if !uon.isValid("one") {
+	if !isValid("one,two", "one") {
 		t.Error("update option did not accept valid option \"one\"")
 	}
-	if uon.isValid("three") {
+	if isValid("one,two", "three") {
 		t.Error("update option accepted invalid option \"three\"")
 	}
 	for _, s := range []string{"one", "asdf", "foobarbaz"} {
-		if !uoa.isValid(s) {
+		if !isValid("", s) {
 			t.Errorf("update option with no \"valid\" field did not accept %q", s)
 		}
 	}
 
-	uc := &UpdateConfig{"reboot-strategy": "wizzlewazzle"}
+	uc := &UpdateConfig{RebootStrategy: "wizzlewazzle"}
 	f, err := uc.File("")
 	if err == nil {
 		t.Errorf("File did not give an error on invalid UpdateOption")
@@ -87,7 +77,7 @@ func TestServerGroupOptions(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 	setupFixtures(dir)
-	u := &UpdateConfig{"group": "master", "server": "http://foo.com"}
+	u := &UpdateConfig{Group: "master", Server: "http://foo.com"}
 
 	want := `
 GROUP=master
@@ -142,7 +132,7 @@ func TestRebootStrategies(t *testing.T) {
 		{"off", "REBOOT_STRATEGY=off", true, "stop"},
 	}
 	for _, s := range strategies {
-		uc := &UpdateConfig{"reboot-strategy": s.name}
+		uc := &UpdateConfig{RebootStrategy: s.name}
 		f, err := uc.File(dir)
 		if err != nil {
 			t.Errorf("update failed to generate file for reboot-strategy=%v: %v", s.name, err)
@@ -196,7 +186,7 @@ func TestUpdateConfWrittenToDisk(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		uc := &UpdateConfig{"reboot-strategy": "etcd-lock"}
+		uc := &UpdateConfig{RebootStrategy: "etcd-lock"}
 
 		f, err := uc.File(dir)
 		if err != nil {

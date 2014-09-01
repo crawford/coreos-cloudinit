@@ -161,7 +161,6 @@ func checkNode(n, c node, cfg context, val *validator) {
 			}
 		}
 
-		fmt.Printf("%s\n", k)
 		if sc, ok := c[k]; ok {
 			if sn, ok := v.(map[interface{}]interface{}); ok {
 				checkNode(node(sn), sc.(node), cfg, val)
