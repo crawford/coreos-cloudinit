@@ -6,17 +6,17 @@ type Reporter interface {
 	Entries() []Entry
 }
 
-type ruleContext struct {
+type context struct {
 	content []byte
-	currentLine int
+	line    int
 }
 
 type test struct {
-	context ruleContext
-	rule rule
+	context context
+	rule    rule
 }
 
-type rule func(context ruleContext, validator *validator)
+type rule func(context context, validator *validator)
 
 var (
 	Rules []rule = YamlRules

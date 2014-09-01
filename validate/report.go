@@ -44,4 +44,3 @@ func (r *Report) Warning(line int, message string) {
 func (r *Report) Entries() []Entry {
 	return r.entries
 }
-

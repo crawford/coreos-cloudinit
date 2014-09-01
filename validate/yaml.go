@@ -1,8 +1,13 @@
 package validate
 
 import (
+	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
+
+	"github.com/coreos/coreos-cloudinit/initialize"
 
 	"github.com/coreos/coreos-cloudinit/third_party/launchpad.net/goyaml"
 )
@@ -12,6 +17,7 @@ type node map[interface{}]interface{}
 var (
 	YamlRules []rule = []rule{
 		syntax,
+		nodes,
 	}
 	goyamlError = regexp.MustCompile(`^YAML error: line (?P<line>[[:digit:]]+): (?P<msg>.*)$`)
 	validNodes  = node{
@@ -99,53 +105,69 @@ var (
 	}
 )
 
-func syntax(context ruleContext, validator *validator) {
-	if err := goyaml.Unmarshal(context.content, &struct{}{}); err != nil {
+func syntax(c context, v *validator) {
+	if err := goyaml.Unmarshal(c.content, &struct{}{}); err != nil {
 		matches := goyamlError.FindStringSubmatch(err.Error())
 		line, err := strconv.Atoi(matches[1])
 		if err != nil {
 			panic(err)
 		}
 		msg := matches[2]
-		validator.report.Error(context.currentLine+line, msg)
+		v.report.Error(c.line+line+1, msg)
 	}
 }
 
-/*func nodes(context ruleContext, validator *validator) error {
-	var config node
-	if err := goyaml.Unmarshal(context.content, &config); err != nil {
-		return nil
+func nodes(c context, v *validator) {
+	var n node
+	if err := goyaml.Unmarshal(c.content, &n); err == nil {
+		checkNode(n, toNode(initialize.CloudConfig{}), c, v)
 	}
-	checkNode(config, validNodes, validator.report, string(context.content), 0)
-	return nil
 }
 
-func checkNode(n, c node, r Reporter, config string, lineNum int) {
+func toNode(s interface{}) node {
+	n := make(node)
+	st := reflect.TypeOf(s)
+	sv := reflect.ValueOf(s)
+
+	if sv.Kind() != reflect.Struct {
+		return n
+	}
+
+	for i := 0; i < st.NumField(); i++ {
+		k := st.Field(i).Tag.Get("yaml")
+		if k != "-" {
+			n[k] = toNode(sv.Field(i).Interface())
+		}
+	}
+	return n
+}
+
+func checkNode(n, c node, cfg context, val *validator) {
 	for k, v := range n {
-		lineNum := lineNum
-		config := config
+		cfg := cfg
 
 		for {
-			tokens := strings.SplitN(config, "\n", 2)
+			tokens := strings.SplitN(string(cfg.content), "\n", 2)
 			line := tokens[0]
 			if len(tokens) > 1 {
-				config = tokens[1]
+				cfg.content = []byte(tokens[1])
 			} else {
-				config = ""
+				cfg.content = []byte{}
 			}
-			lineNum++
+			cfg.line++
 
 			if strings.TrimSpace(strings.Split(line, ":")[0]) == fmt.Sprint(k) {
 				break
 			}
 		}
 
+		fmt.Printf("%s\n", k)
 		if sc, ok := c[k]; ok {
 			if sn, ok := v.(map[interface{}]interface{}); ok {
-				checkNode(node(sn), sc.(node), r, config, lineNum)
+				checkNode(node(sn), sc.(node), cfg, val)
 			}
 		} else {
-			r.Warning(lineNum, fmt.Sprintf("unrecognized key %q", k))
+			val.report.Warning(cfg.line, fmt.Sprintf("unrecognized key %q", k))
 		}
 	}
-}*/
+}

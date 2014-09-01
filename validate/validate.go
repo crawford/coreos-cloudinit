@@ -1,17 +1,23 @@
 package validate
 
 import (
-	"strings"
 	"fmt"
+	"strings"
 )
 
 type validator struct {
 	report Reporter
-	tests []test
+	tests  []test
+}
+
+func (v *validator) addRules(c context, rs ...rule) {
+	for _, r := range rs {
+		v.tests = append(v.tests, test{c, r})
+	}
 }
 
 func Validate(config []byte) (Reporter, error) {
-	v := &validator{&Report{}, []test{{ruleContext{config, 0}, baseRule}}}
+	v := &validator{&Report{}, []test{{context{config, 0}, baseRule}}}
 
 	for len(v.tests) > 0 {
 		t := v.tests[0]
@@ -33,16 +39,13 @@ func Validate(config []byte) (Reporter, error) {
 	return v.report, nil
 }
 
-
-func baseRule(c ruleContext, v *validator) {
+func baseRule(c context, v *validator) {
 	header := strings.SplitN(string(c.content), "\n", 2)[0]
 	if header == "#cloud-config" {
-
+		v.addRules(c, YamlRules...)
 	} else if strings.HasPrefix("#!", header) {
 
 	} else {
-		v.report.Error(c.currentLine + 1, "must be \"#cloud-config\" or \"#!\"")
+		v.report.Error(c.line+1, "must be \"#cloud-config\" or \"#!\"")
 	}
 }
-
-
