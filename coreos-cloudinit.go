@@ -18,7 +18,6 @@ import (
 	"github.com/coreos/coreos-cloudinit/initialize"
 	"github.com/coreos/coreos-cloudinit/pkg"
 	"github.com/coreos/coreos-cloudinit/system"
-	"github.com/coreos/coreos-cloudinit/validate"
 )
 
 const (
@@ -135,18 +134,6 @@ func main() {
 		fmt.Printf("Failed fetching user-data from datasource: %v\nContinuing...\n", err)
 		failure = true
 	}
-	if report, err := validate.Validate(userdataBytes); err == nil {
-		for _, e := range report.Entries() {
-			if e.IsError() {
-				fmt.Printf("Error: %s\n", e)
-			} else if e.IsWarning() {
-				fmt.Printf("Warning: %s\n", e)
-			}
-		}
-	} else {
-		fmt.Printf("Failed while validating user_data (%q)\n", err)
-	}
-	return
 
 	fmt.Printf("Fetching meta-data from datasource of type %q\n", ds.Type())
 	metadataBytes, err := ds.FetchMetadata()

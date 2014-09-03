@@ -10,6 +10,7 @@ import (
 
 	"github.com/coreos/coreos-cloudinit/network"
 	"github.com/coreos/coreos-cloudinit/system"
+	"github.com/coreos/coreos-cloudinit/validate"
 )
 
 // CloudConfigFile represents a CoreOS specific configuration option that can generate
@@ -44,87 +45,17 @@ type CloudConfig struct {
 	NetworkConfig     string        `yaml:"-"`
 }
 
-type warner func(format string, v ...interface{})
-
-// warnOnUnrecognizedKeys parses the contents of a cloud-config file and calls
-// warn(msg, key) for every unrecognized key (i.e. those not present in CloudConfig)
-func warnOnUnrecognizedKeys(contents string, warn warner) {
-	// Generate a map of all understood cloud config options
-	var cc map[string]interface{}
-	b, _ := yaml.Marshal(&CloudConfig{})
-	yaml.Unmarshal(b, &cc)
-
-	// Now unmarshal the entire provided contents
-	var c map[string]interface{}
-	yaml.Unmarshal([]byte(contents), &c)
-
-	// Check that every key in the contents exists in the cloud config
-	for k, _ := range c {
-		if _, ok := cc[k]; !ok {
-			warn("Warning: unrecognized key %q in provided cloud config - ignoring section", k)
-		}
-	}
-
-	// Check for unrecognized coreos options, if any are set
-	if coreos, ok := c["coreos"]; ok {
-		if set, ok := coreos.(map[interface{}]interface{}); ok {
-			known := cc["coreos"].(map[interface{}]interface{})
-			for k, _ := range set {
-				if key, ok := k.(string); ok {
-					if _, ok := known[key]; !ok {
-						warn("Warning: unrecognized key %q in coreos section of provided cloud config - ignoring", key)
-					}
-				} else {
-					warn("Warning: unrecognized key %q in coreos section of provided cloud config - ignoring", k)
-				}
+func warnOnUnrecognizedKeys([]byte config) {
+	if report, err := validate.Validate(config); err == nil {
+		for _, e := range report.Entries() {
+			if e.IsError() {
+				log.Printf("Error: %s\n", e)
+			} else if e.IsWarning() {
+				log.Printf("Warning: %s\n", e)
 			}
 		}
-	}
-
-	// Check for any badly-specified users, if any are set
-	if users, ok := c["users"]; ok {
-		var known map[string]interface{}
-		b, _ := yaml.Marshal(&system.User{})
-		yaml.Unmarshal(b, &known)
-
-		if set, ok := users.([]interface{}); ok {
-			for _, u := range set {
-				if user, ok := u.(map[interface{}]interface{}); ok {
-					for k, _ := range user {
-						if key, ok := k.(string); ok {
-							if _, ok := known[key]; !ok {
-								warn("Warning: unrecognized key %q in user section of cloud config - ignoring", key)
-							}
-						} else {
-							warn("Warning: unrecognized key %q in user section of cloud config - ignoring", k)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Check for any badly-specified files, if any are set
-	if files, ok := c["write_files"]; ok {
-		var known map[string]interface{}
-		b, _ := yaml.Marshal(&system.File{})
-		yaml.Unmarshal(b, &known)
-
-		if set, ok := files.([]interface{}); ok {
-			for _, f := range set {
-				if file, ok := f.(map[interface{}]interface{}); ok {
-					for k, _ := range file {
-						if key, ok := k.(string); ok {
-							if _, ok := known[key]; !ok {
-								warn("Warning: unrecognized key %q in file section of cloud config - ignoring", key)
-							}
-						} else {
-							warn("Warning: unrecognized key %q in file section of cloud config - ignoring", k)
-						}
-					}
-				}
-			}
-		}
+	} else {
+		log.Printf("Failed while validating user_data (%q)\n", err)
 	}
 }
 
@@ -137,7 +68,7 @@ func NewCloudConfig(contents string) (*CloudConfig, error) {
 	if err != nil {
 		return &cfg, err
 	}
-	warnOnUnrecognizedKeys(contents, log.Printf)
+	warnOnUnrecognizedKeys(contents)
 	return &cfg, nil
 }
 
