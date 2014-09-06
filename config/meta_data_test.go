@@ -1,7 +1,9 @@
-package initialize
+package config
 
-import "reflect"
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestParseMetadata(t *testing.T) {
 	for i, tt := range []struct {

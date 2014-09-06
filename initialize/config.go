@@ -8,86 +8,15 @@ import (
 
 	"github.com/coreos/coreos-cloudinit/third_party/gopkg.in/yaml.v1"
 
+	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/coreos-cloudinit/network"
 	"github.com/coreos/coreos-cloudinit/system"
-	"github.com/coreos/coreos-cloudinit/validate"
 )
-
-// CloudConfigFile represents a CoreOS specific configuration option that can generate
-// an associated system.File to be written to disk
-type CloudConfigFile interface {
-	// File should either return (*system.File, error), or (nil, nil) if nothing
-	// needs to be done for this configuration option.
-	File(root string) (*system.File, error)
-}
-
-// CloudConfigUnit represents a CoreOS specific configuration option that can generate
-// associated system.Units to be created/enabled appropriately
-type CloudConfigUnit interface {
-	Units(root string) ([]system.Unit, error)
-}
-
-// CloudConfig encapsulates the entire cloud-config configuration file and maps directly to YAML
-type CloudConfig struct {
-	SSHAuthorizedKeys []string `yaml:"ssh_authorized_keys"`
-	Coreos            struct {
-		Etcd   EtcdEnvironment  `yaml:"etcd"`
-		Fleet  FleetEnvironment `yaml:"fleet"`
-		OEM    OEMRelease       `yaml:"oem"`
-		Update UpdateConfig     `yaml:"update"`
-		Units  []system.Unit    `yaml:"units"`
-	} `yaml:"coreos"`
-	WriteFiles        []system.File `yaml:"write_files"`
-	Hostname          string        `yaml:"hostname"`
-	Users             []system.User `yaml:"users"`
-	ManageEtcHosts    EtcHosts      `yaml:"manage_etc_hosts"`
-	NetworkConfigPath string        `yaml:"-"`
-	NetworkConfig     string        `yaml:"-"`
-}
-
-func warnOnUnrecognizedKeys([]byte config) {
-	if report, err := validate.Validate(config); err == nil {
-		for _, e := range report.Entries() {
-			if e.IsError() {
-				log.Printf("Error: %s\n", e)
-			} else if e.IsWarning() {
-				log.Printf("Warning: %s\n", e)
-			}
-		}
-	} else {
-		log.Printf("Failed while validating user_data (%q)\n", err)
-	}
-}
-
-// NewCloudConfig instantiates a new CloudConfig from the given contents (a
-// string of YAML), returning any error encountered. It will ignore unknown
-// fields but log encountering them.
-func NewCloudConfig(contents string) (*CloudConfig, error) {
-	var cfg CloudConfig
-	err := yaml.Unmarshal([]byte(contents), &cfg)
-	if err != nil {
-		return &cfg, err
-	}
-	warnOnUnrecognizedKeys(contents)
-	return &cfg, nil
-}
-
-func (cc CloudConfig) String() string {
-	bytes, err := yaml.Marshal(cc)
-	if err != nil {
-		return ""
-	}
-
-	stringified := string(bytes)
-	stringified = fmt.Sprintf("#cloud-config\n%s", stringified)
-
-	return stringified
-}
 
 // Apply renders a CloudConfig to an Environment. This can involve things like
 // configuring the hostname, adding new users, writing various configuration
 // files to disk, and manipulating systemd services.
-func Apply(cfg CloudConfig, env *Environment) error {
+func Apply(cfg config.CloudConfig, env *config.Environment) error {
 	if cfg.Hostname != "" {
 		if err := system.SetHostname(cfg.Hostname); err != nil {
 			return err
@@ -147,7 +76,7 @@ func Apply(cfg CloudConfig, env *Environment) error {
 		}
 	}
 
-	for _, ccf := range []CloudConfigFile{cfg.Coreos.OEM, cfg.Coreos.Update, cfg.ManageEtcHosts} {
+	for _, ccf := range []config.CloudConfigFile{cfg.Coreos.OEM, cfg.Coreos.Update, cfg.ManageEtcHosts} {
 		f, err := ccf.File(env.Root())
 		if err != nil {
 			return err
@@ -157,7 +86,7 @@ func Apply(cfg CloudConfig, env *Environment) error {
 		}
 	}
 
-	for _, ccu := range []CloudConfigUnit{cfg.Coreos.Etcd, cfg.Coreos.Fleet, cfg.Coreos.Update} {
+	for _, ccu := range []config.CloudConfigUnit{cfg.Coreos.Etcd, cfg.Coreos.Fleet, cfg.Coreos.Update} {
 		u, err := ccu.Units(env.Root())
 		if err != nil {
 			return err

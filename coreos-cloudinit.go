@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/coreos-cloudinit/config"
+	"github.com/coreos/coreos-cloudinit/config/validate"
 	"github.com/coreos/coreos-cloudinit/datasource"
 	"github.com/coreos/coreos-cloudinit/datasource/configdrive"
 	"github.com/coreos/coreos-cloudinit/datasource/file"
@@ -59,10 +61,9 @@ func init() {
 	flag.StringVar(&flags.sources.digitalOceanMetadataService, "from-digitalocean-metadata", "", "Download DigitalOcean data from the provided url")
 	flag.StringVar(&flags.sources.url, "from-url", "", "Download user-data from provided url")
 	flag.BoolVar(&flags.sources.procCmdLine, "from-proc-cmdline", false, fmt.Sprintf("Parse %s for '%s=<url>', using the cloud-config served by an HTTP GET to <url>", proc_cmdline.ProcCmdlineLocation, proc_cmdline.ProcCmdlineCloudConfigFlag))
-	flag.StringVar(&flags.oem, "oem", "", "Use the settings specific to the provided OEM")
 	flag.StringVar(&flags.convertNetconf, "convert-netconf", "", "Read the network config provided in cloud-drive and translate it from the specified format into networkd unit files")
 	flag.StringVar(&flags.workspace, "workspace", "/var/lib/coreos-cloudinit", "Base directory coreos-cloudinit should use to store data")
-	flag.StringVar(&flags.sshKeyName, "ssh-key-name", initialize.DefaultSSHKeyName, "Add SSH keys to the system with the given name")
+	flag.StringVar(&flags.sshKeyName, "ssh-key-name", config.DefaultSSHKeyName, "Add SSH keys to the system with the given name")
 }
 
 type oemConfig map[string]string
@@ -135,6 +136,18 @@ func main() {
 		failure = true
 	}
 
+	if report, err := validate.Validate(userdataBytes); err == nil {
+		for _, e := range report.Entries() {
+			if e.IsError() {
+				fmt.Printf("Error: %s\n", e)
+			} else if e.IsWarning() {
+				fmt.Printf("Warning: %s\n", e)
+			}
+		}
+	} else {
+		fmt.Printf("Failed while validating user_data (%q)\n", err)
+	}
+
 	fmt.Printf("Fetching meta-data from datasource of type %q\n", ds.Type())
 	metadataBytes, err := ds.FetchMetadata()
 	if err != nil {
@@ -145,7 +158,7 @@ func main() {
 	// Extract IPv4 addresses from metadata if possible
 	var subs map[string]string
 	if len(metadataBytes) > 0 {
-		subs, err = initialize.ExtractIPsFromMetadata(metadataBytes)
+		subs, err = config.ExtractIPsFromMetadata(metadataBytes)
 		if err != nil {
 			fmt.Printf("Failed extracting IPs from meta-data: %v\n", err)
 			os.Exit(1)
@@ -153,12 +166,12 @@ func main() {
 	}
 
 	// Apply environment to user-data
-	env := initialize.NewEnvironment("/", ds.ConfigRoot(), flags.workspace, flags.convertNetconf, flags.sshKeyName, subs)
+	env := config.NewEnvironment("/", ds.ConfigRoot(), flags.workspace, flags.convertNetconf, flags.sshKeyName, subs)
 	userdata := env.Apply(string(userdataBytes))
 
-	var ccm, ccu *initialize.CloudConfig
+	var ccm, ccu *config.CloudConfig
 	var script *system.Script
-	if ccm, err = initialize.ParseMetaData(string(metadataBytes)); err != nil {
+	if ccm, err = config.ParseMetaData(string(metadataBytes)); err != nil {
 		fmt.Printf("Failed to parse meta-data: %v\n", err)
 		os.Exit(1)
 	}
@@ -173,19 +186,19 @@ func main() {
 		ccm.NetworkConfig = string(netconfBytes)
 	}
 
-	if ud, err := initialize.ParseUserData(userdata); err != nil {
+	if ud, err := config.ParseUserData(userdata); err != nil {
 		fmt.Printf("Failed to parse user-data: %v\nContinuing...\n", err)
 		failure = true
 	} else {
 		switch t := ud.(type) {
-		case *initialize.CloudConfig:
+		case *config.CloudConfig:
 			ccu = t
 		case system.Script:
 			script = &t
 		}
 	}
 
-	var cc *initialize.CloudConfig
+	var cc *config.CloudConfig
 	if ccm != nil && ccu != nil {
 		fmt.Println("Merging cloud-config from meta-data and user-data")
 		merged := mergeCloudConfig(*ccm, *ccu)
@@ -224,7 +237,7 @@ func main() {
 // not already set on udcc (i.e. user-data always takes precedence)
 // NB: This needs to be kept in sync with ParseMetadata so that it tracks all
 // elements of a CloudConfig which that function can populate.
-func mergeCloudConfig(mdcc, udcc initialize.CloudConfig) (cc initialize.CloudConfig) {
+func mergeCloudConfig(mdcc, udcc config.CloudConfig) (cc config.CloudConfig) {
 	if mdcc.Hostname != "" {
 		if udcc.Hostname != "" {
 			fmt.Printf("Warning: user-data hostname (%s) overrides metadata hostname (%s)\n", udcc.Hostname, mdcc.Hostname)
@@ -336,7 +349,7 @@ func selectDatasource(sources []datasource.Datasource) datasource.Datasource {
 }
 
 // TODO(jonboulle): this should probably be refactored and moved into a different module
-func runScript(script system.Script, env *initialize.Environment) error {
+func runScript(script system.Script, env *config.Environment) error {
 	err := initialize.PrepWorkspace(env.Workspace())
 	if err != nil {
 		fmt.Printf("Failed preparing workspace: %v\n", err)
