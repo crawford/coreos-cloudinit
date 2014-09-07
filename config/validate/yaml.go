@@ -19,18 +19,31 @@ var (
 		syntax,
 		nodes,
 	}
-	goyamlError = regexp.MustCompile(`^YAML error: line (?P<line>[[:digit:]]+): (?P<msg>.*)$`)
+	goyamlLineError = regexp.MustCompile(`^YAML error: line (?P<line>[[:digit:]]+): (?P<msg>.*)$`)
+	goyamlError     = regexp.MustCompile(`^YAML error: (?P<msg>.*)$`)
 )
 
 func syntax(c context, v *validator) {
 	if err := goyaml.Unmarshal(c.content, &struct{}{}); err != nil {
-		matches := goyamlError.FindStringSubmatch(err.Error())
-		line, err := strconv.Atoi(matches[1])
-		if err != nil {
-			panic(err)
+		matches := goyamlLineError.FindStringSubmatch(err.Error())
+		if len(matches) > 0 {
+			line, err := strconv.Atoi(matches[1])
+			if err != nil {
+				panic(err)
+			}
+			msg := matches[2]
+			v.report.Error(c.line+line, msg)
+			return
 		}
-		msg := matches[2]
-		v.report.Error(c.line+line+1, msg)
+
+		matches = goyamlError.FindStringSubmatch(err.Error())
+		if len(matches) > 0 {
+			msg := matches[1]
+			v.report.Error(c.line+1, msg)
+			return
+		}
+
+		panic("couldn't parse goyaml error")
 	}
 }
 
