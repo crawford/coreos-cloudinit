@@ -12,6 +12,8 @@ import (
 	"github.com/coreos/coreos-cloudinit/third_party/launchpad.net/goyaml"
 )
 
+type node map[interface{}]interface{}
+
 var (
 	YamlRules []rule = []rule{
 		syntax,
@@ -46,47 +48,87 @@ func syntax(c context, v *validator) {
 }
 
 func nodes(c context, v *validator) {
-	var n struct{}
+	var n node
 	if err := goyaml.Unmarshal(c.content, &n); err == nil {
-		fmt.Printf("%#v\n", n)
-		checkStructure(n, config.CloudConfig{}, c, v)
+		fmt.Printf("%#v\n", toNode(config.CloudConfig{}))
+		checkNode(n, toNode(config.CloudConfig{}), c, v)
 	}
 }
 
-func checkStructure(n, c interface{}, ctx context, val *validator) {
-	//ct := reflect.TypeOf(c)
-	cv := reflect.ValueOf(c)
-	nt := reflect.TypeOf(n)
-	nv := reflect.ValueOf(n)
+func toNode(s interface{}) node {
+	st := reflect.TypeOf(s)
+	sv := reflect.ValueOf(s)
 
-	for i := 0; i < nt.NumField(); i++ {
-		k := nt.Field(i).Name
-		ctx := ctx
+	if sv.Kind() != reflect.Struct {
+		panic(fmt.Sprintf("%T is not a struct", s))
+	}
+
+	n := make(node)
+	for i := 0; i < st.NumField(); i++ {
+		ft := st.Field(i)
+		fv := sv.Field(i)
+		k := ft.Tag.Get("yaml")
+
+		if k == "-" {
+			continue
+		}
+
+		fmt.Printf("%s: %s\n", k, fv.Kind())
+		switch fv.Kind() {
+		case reflect.Struct:
+			n[k] = toNode(fv.Interface())
+		case reflect.Slice:
+			fmt.Printf("SLICE %s %T\n", ft.Type, fv.Interface())
+			switch ft.Type.Elem().Kind() {
+			case reflect.Struct:
+			fmt.Println("[]STRUCT")
+				n[k] = toNode(fv.Interface())
+			default:
+			fmt.Println("[]?")
+				n[k] = fv.Interface()
+			}
+		default:
+			n[k] = fv.Interface()
+		}
+	}
+	return n
+}
+
+func checkNode(n, c node, cfg context, val *validator) {
+	for k, v := range n {
+		cfg := cfg
 
 		for {
-			tokens := strings.SplitN(string(ctx.content), "\n", 2)
+			tokens := strings.SplitN(string(cfg.content), "\n", 2)
 			line := tokens[0]
 			if len(tokens) > 1 {
-				ctx.content = []byte(tokens[1])
+				cfg.content = []byte(tokens[1])
 			} else {
-				ctx.content = []byte{}
+				cfg.content = []byte{}
 			}
-			ctx.line++
+			cfg.line++
 
 			if strings.TrimSpace(strings.Split(line, ":")[0]) == fmt.Sprint(k) {
 				break
 			}
 		}
 
-		if nt.Kind() != reflect.Struct {
-			val.report.Warning(ctx.line, fmt.Sprintf("unrecognized key %q", k))
-		}
-		if _, ok := nt.FieldByName(k); ok {
-				sn := nv.FieldByName(k).Interface()
-				sc := cv.FieldByName(k).Interface()
-				checkStructure(sn, sc, ctx, val)
+		if sc, ok := c[k]; ok {
+			fmt.Printf("got %T, want %T\n", v, sc)
+			if sn, ok := v.(map[interface{}]interface{}); ok {
+				checkNode(node(sn), sc.(node), cfg, val)
+			} else {
+				fmt.Printf("%#v\n", v)
+				if reflect.TypeOf(v).Kind() == reflect.Slice && reflect.TypeOf(sc).Kind() == reflect.Slice {
+					fmt.Printf("%v %v\n", reflect.TypeOf(v).Elem(), reflect.TypeOf(sc).Elem())
+				} else {
+					if !reflect.TypeOf(v).ConvertibleTo(reflect.TypeOf(sc)) {
+						val.report.Warning(cfg.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sc))
+					}
+				}
+			}
 		} else {
-			val.report.Warning(ctx.line, fmt.Sprintf("unrecognized key %q", k))
+			val.report.Warning(cfg.line, fmt.Sprintf("unrecognized key %q", k))
 		}
 	}
 }

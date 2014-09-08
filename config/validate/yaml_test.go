@@ -44,10 +44,21 @@ func TestNodes(t *testing.T) {
 			e: []Entry{{3, "unrecognized key \"discover\"", warningEntry}},
 		},
 		{
+			c: "coreos:\n  etcd:\n    discovery: good",
+		},
+		{
 			c: "ssh_authorized_keys:\n  bad",
+			e: []Entry{{1, "incorrect type for \"ssh_authorized_keys\" (want []string)", warningEntry}},
+		},
+		{
+			c: "ssh_authorized_keys:\n  - good\n  - he",
 		},
 		{
 			c: "users:\n  - bad",
+			e: []Entry{{1, "incorrect type for \"users\" (want []system.User)", warningEntry}},
+		},
+		{
+			c: "users:\n  - name: good",
 		},
 	} {
 		v := validator{report: &Report{}}
