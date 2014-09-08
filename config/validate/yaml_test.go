@@ -40,6 +40,10 @@ func TestNodes(t *testing.T) {
 			e: []Entry{{1, "unrecognized key \"test\"", warningEntry}},
 		},
 		{
+			c: "hostname:",
+			e: []Entry{{1, "incorrect type for \"hostname\" (want string)", warningEntry}},
+		},
+		{
 			c: "coreos:\n  etcd:\n    discover:",
 			e: []Entry{{3, "unrecognized key \"discover\"", warningEntry}},
 		},
@@ -51,7 +55,7 @@ func TestNodes(t *testing.T) {
 			e: []Entry{{1, "incorrect type for \"ssh_authorized_keys\" (want []string)", warningEntry}},
 		},
 		{
-			c: "ssh_authorized_keys:\n  - good\n  - he",
+			c: "ssh_authorized_keys:\n  - good",
 		},
 		{
 			c: "users:\n  - bad",
