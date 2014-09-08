@@ -12,8 +12,6 @@ import (
 	"github.com/coreos/coreos-cloudinit/third_party/launchpad.net/goyaml"
 )
 
-type node map[interface{}]interface{}
-
 var (
 	YamlRules []rule = []rule{
 		syntax,
@@ -48,55 +46,47 @@ func syntax(c context, v *validator) {
 }
 
 func nodes(c context, v *validator) {
-	var n node
+	var n struct{}
 	if err := goyaml.Unmarshal(c.content, &n); err == nil {
-		checkNode(n, toNode(config.CloudConfig{}), c, v)
+		fmt.Printf("%#v\n", n)
+		checkStructure(n, config.CloudConfig{}, c, v)
 	}
 }
 
-func toNode(s interface{}) node {
-	n := make(node)
-	st := reflect.TypeOf(s)
-	sv := reflect.ValueOf(s)
+func checkStructure(n, c interface{}, ctx context, val *validator) {
+	//ct := reflect.TypeOf(c)
+	cv := reflect.ValueOf(c)
+	nt := reflect.TypeOf(n)
+	nv := reflect.ValueOf(n)
 
-	if sv.Kind() != reflect.Struct {
-		return n
-	}
-
-	for i := 0; i < st.NumField(); i++ {
-		k := st.Field(i).Tag.Get("yaml")
-		if k != "-" {
-			n[k] = toNode(sv.Field(i).Interface())
-		}
-	}
-	return n
-}
-
-func checkNode(n, c node, cfg context, val *validator) {
-	for k, v := range n {
-		cfg := cfg
+	for i := 0; i < nt.NumField(); i++ {
+		k := nt.Field(i).Name
+		ctx := ctx
 
 		for {
-			tokens := strings.SplitN(string(cfg.content), "\n", 2)
+			tokens := strings.SplitN(string(ctx.content), "\n", 2)
 			line := tokens[0]
 			if len(tokens) > 1 {
-				cfg.content = []byte(tokens[1])
+				ctx.content = []byte(tokens[1])
 			} else {
-				cfg.content = []byte{}
+				ctx.content = []byte{}
 			}
-			cfg.line++
+			ctx.line++
 
 			if strings.TrimSpace(strings.Split(line, ":")[0]) == fmt.Sprint(k) {
 				break
 			}
 		}
 
-		if sc, ok := c[k]; ok {
-			if sn, ok := v.(map[interface{}]interface{}); ok {
-				checkNode(node(sn), sc.(node), cfg, val)
-			}
+		if nt.Kind() != reflect.Struct {
+			val.report.Warning(ctx.line, fmt.Sprintf("unrecognized key %q", k))
+		}
+		if _, ok := nt.FieldByName(k); ok {
+				sn := nv.FieldByName(k).Interface()
+				sc := cv.FieldByName(k).Interface()
+				checkStructure(sn, sc, ctx, val)
 		} else {
-			val.report.Warning(cfg.line, fmt.Sprintf("unrecognized key %q", k))
+			val.report.Warning(ctx.line, fmt.Sprintf("unrecognized key %q", k))
 		}
 	}
 }

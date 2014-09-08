@@ -10,9 +10,7 @@ func TestSyntax(t *testing.T) {
 		c string
 		e []Entry
 	}{
-		{
-			c: "",
-		},
+		{},
 		{
 			c: "	",
 			e: []Entry{{1, "found character that cannot start any token", errorEntry}},
@@ -36,15 +34,20 @@ func TestNodes(t *testing.T) {
 		c string
 		e []Entry
 	}{
+		{},
 		{
-			c: `test: a`,
+			c: "test:",
 			e: []Entry{{1, "unrecognized key \"test\"", warningEntry}},
 		},
 		{
-			c: `coreos:
-  etcd:
-    discover:`,
+			c: "coreos:\n  etcd:\n    discover:",
 			e: []Entry{{3, "unrecognized key \"discover\"", warningEntry}},
+		},
+		{
+			c: "ssh_authorized_keys:\n  bad",
+		},
+		{
+			c: "users:\n  - bad",
 		},
 	} {
 		v := validator{report: &Report{}}
