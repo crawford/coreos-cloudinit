@@ -6,8 +6,6 @@ import (
 	"log"
 	"path"
 
-	"github.com/coreos/coreos-cloudinit/third_party/gopkg.in/yaml.v1"
-
 	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/coreos-cloudinit/network"
 	"github.com/coreos/coreos-cloudinit/system"

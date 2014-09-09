@@ -9,7 +9,7 @@ import (
 
 	"github.com/coreos/coreos-cloudinit/config"
 
-	"github.com/coreos/coreos-cloudinit/third_party/launchpad.net/goyaml"
+	"github.com/coreos/coreos-cloudinit/third_party/gopkg.in/yaml.v1"
 )
 
 var (
@@ -17,13 +17,13 @@ var (
 		syntax,
 		nodes,
 	}
-	goyamlLineError = regexp.MustCompile(`^YAML error: line (?P<line>[[:digit:]]+): (?P<msg>.*)$`)
-	goyamlError     = regexp.MustCompile(`^YAML error: (?P<msg>.*)$`)
+	yamlLineError = regexp.MustCompile(`^YAML error: line (?P<line>[[:digit:]]+): (?P<msg>.*)$`)
+	yamlError     = regexp.MustCompile(`^YAML error: (?P<msg>.*)$`)
 )
 
 func syntax(c context, v *validator) {
-	if err := goyaml.Unmarshal(c.content, &struct{}{}); err != nil {
-		matches := goyamlLineError.FindStringSubmatch(err.Error())
+	if err := yaml.Unmarshal(c.content, &struct{}{}); err != nil {
+		matches := yamlLineError.FindStringSubmatch(err.Error())
 		if len(matches) > 0 {
 			line, err := strconv.Atoi(matches[1])
 			if err != nil {
@@ -34,20 +34,20 @@ func syntax(c context, v *validator) {
 			return
 		}
 
-		matches = goyamlError.FindStringSubmatch(err.Error())
+		matches = yamlError.FindStringSubmatch(err.Error())
 		if len(matches) > 0 {
 			msg := matches[1]
 			v.report.Error(c.line+1, msg)
 			return
 		}
 
-		panic("couldn't parse goyaml error")
+		panic("couldn't parse yaml error")
 	}
 }
 
 func nodes(c context, v *validator) {
 	var n map[interface{}]interface{}
-	if err := goyaml.Unmarshal(c.content, &n); err == nil {
+	if err := yaml.Unmarshal(c.content, &n); err == nil {
 		fmt.Printf("%s\n%#v\n", c.content, n)
 		checkStructure(n, config.CloudConfig{}, c, v)
 	}

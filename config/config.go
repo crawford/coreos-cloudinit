@@ -7,7 +7,7 @@ import (
 
 	"github.com/coreos/coreos-cloudinit/system"
 
-	"github.com/coreos/coreos-cloudinit/third_party/launchpad.net/goyaml"
+	"github.com/coreos/coreos-cloudinit/third_party/gopkg.in/yaml.v1"
 )
 
 // CloudConfigFile represents a CoreOS specific configuration option that can generate
@@ -53,7 +53,7 @@ func normalizeKeys(config string) string {
 // string of YAML), returning any error encountered.
 func NewCloudConfig(contents string) (*CloudConfig, error) {
 	var cfg CloudConfig
-	err := goyaml.Unmarshal([]byte(normalizeKeys(contents)), &cfg)
+	err := yaml.Unmarshal([]byte(normalizeKeys(contents)), &cfg)
 	if err != nil {
 		return &cfg, err
 	}
@@ -61,7 +61,7 @@ func NewCloudConfig(contents string) (*CloudConfig, error) {
 }
 
 func (cc CloudConfig) String() string {
-	bytes, err := goyaml.Marshal(cc)
+	bytes, err := yaml.Marshal(cc)
 	if err != nil {
 		return ""
 	}
