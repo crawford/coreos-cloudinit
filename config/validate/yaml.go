@@ -45,90 +45,91 @@ func syntax(c context, v *validator) {
 	}
 }
 
+type node map[interface{}]interface{}
+
 func nodes(c context, v *validator) {
-	var n map[interface{}]interface{}
+	var n node
 	if err := yaml.Unmarshal(c.content, &n); err == nil {
-		fmt.Printf("%s\n%#v\n", c.content, n)
-		checkStructure(n, config.CloudConfig{}, c, v)
+		checkNode(n, toNode(config.CloudConfig{}, ""), c, v)
 	}
 }
 
-func checkStructure(n map[interface{}]interface{}, c interface{}, ctx context, v *validator) {
-	ct := reflect.TypeOf(c)
-	cv := reflect.ValueOf(c)
+func toNode(s interface{}, prefix string) node {
+	prefix += " "
+	sv := reflect.ValueOf(s)
 
+	if sv.Kind() != reflect.Struct {
+		panic(fmt.Sprintf("%T is not a struct (%s)", s, sv.Kind()))
+	}
+
+	n := make(node)
+	for i := 0; i < sv.Type().NumField(); i++ {
+		ft := sv.Type().Field(i)
+		fv := sv.Field(i)
+		k := ft.Tag.Get("yaml")
+
+		if k == "-" || k == "" {
+			continue
+		}
+
+		switch fv.Kind() {
+		case reflect.Struct:
+			fmt.Printf("%s%s: struct\n", prefix, k)
+			n[k] = toNode(fv.Interface(), prefix)
+		case reflect.Slice:
+			et := ft.Type.Elem()
+
+			switch et.Kind() {
+			case reflect.Struct:
+				fmt.Printf("%s%s: []struct\n", prefix, k)
+				n[k] = []node{toNode(reflect.New(et).Elem().Interface(), prefix)}
+			default:
+				fmt.Printf("%s%s: []%s\n", prefix, k, et.Kind())
+				n[k] = reflect.SliceOf(et)
+			}
+		default:
+			fmt.Printf("%s%s: %s\n", prefix, k, fv.Kind())
+			n[k] = fv.Interface()
+		}
+	}
+	return n
+}
+
+func checkNode(n, g node, c context, v *validator) {
 	for k, sn := range n {
-		ctx := ctx
+		c := c
 
 		for {
-			tokens := strings.SplitN(string(ctx.content), "\n", 2)
+			tokens := strings.SplitN(string(c.content), "\n", 2)
 			line := tokens[0]
 			if len(tokens) > 1 {
-				ctx.content = []byte(tokens[1])
+				c.content = []byte(tokens[1])
 			} else {
-				ctx.content = []byte{}
+				c.content = []byte{}
 			}
-			ctx.line++
+			c.line++
 
 			if strings.TrimSpace(strings.Split(line, ":")[0]) == fmt.Sprint(k) {
 				break
 			}
 		}
 
-		/*if ct.Kind() != reflect.Struct {
-			v.report.Warning(ctx.line, fmt.Sprintf("unrecognized key %q", k))
-		}*/
-		foundIndex := -1
-		for i := 0; i < ct.NumField(); i++ {
-			if ct.Field(i).Tag.Get("yaml") == k {
-				foundIndex = i
-				break
-			}
-		}
-		if foundIndex < 0{
-			v.report.Warning(ctx.line, fmt.Sprintf("unrecognized key %q", k))
-			continue
-		}
-
-		sc := cv.Field(foundIndex).Interface()
-
-		if sn == nil {
-			v.report.Warning(ctx.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sc))
-			continue
-		}
-
-		if sn, ok := sn.(map[interface{}]interface{}); ok {
-			checkStructure(sn, sc, ctx, v)
-		}
-
-		switch reflect.TypeOf(sc).Kind() {
-		case reflect.Struct:
-		case reflect.Slice:
-			if reflect.TypeOf(sn).Kind() != reflect.Slice {
-				fmt.Printf("%T\n", sn)
-				v.report.Warning(ctx.line, fmt.Sprintf("incorrect type for %q (want %T)", k,  sc))
-				break
-			}
-
-			switch reflect.TypeOf(sc).Elem().Kind() {
-			case reflect.Struct:
-				if sn, ok := sn.([]map[interface{}]interface{}); ok {
-					checkStructure(sn[0], sc.([]interface{})[0], ctx, v)
+		if sc, ok := g[k]; ok {
+			fmt.Printf("got %T, want %T\n", sn, sc)
+			if sn, ok := sn.(map[interface{}]interface{}); ok {
+				checkNode(sn, sc.(node), c, v)
+			} else {
+				fmt.Printf("%#v\n", sn)
+				if reflect.TypeOf(sn).Kind() == reflect.Slice && reflect.TypeOf(sc).Kind() == reflect.Slice {
+					fmt.Printf("%v %v\n", reflect.TypeOf(sn).Elem(), reflect.TypeOf(sc).Elem())
 				} else {
-					fmt.Printf("alex %T\n", sn)
-					v.report.Warning(ctx.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sc))
-				}
-			default:
-				if reflect.TypeOf(sn).Elem().AssignableTo(reflect.TypeOf(sc).Elem()) {
-					fmt.Printf("%T\n", sn)
-					v.report.Warning(ctx.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sc))
+					if !reflect.TypeOf(sn).ConvertibleTo(reflect.TypeOf(sc)) {
+						v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sc))
+					}
 				}
 			}
-		default:
-			if reflect.TypeOf(sn) != reflect.TypeOf(sc) {
-					fmt.Printf("%T\n", sn)
-				v.report.Warning(ctx.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sc))
-			}
+		} else {
+			v.report.Warning(c.line, fmt.Sprintf("unrecognized key %q", k))
 		}
 	}
 }
