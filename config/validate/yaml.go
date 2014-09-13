@@ -74,21 +74,23 @@ func toNode(s interface{}, prefix string) node {
 
 		switch fv.Kind() {
 		case reflect.Struct:
-			fmt.Printf("%s%s: struct\n", prefix, k)
+			//fmt.Printf("%s%s: struct\n", prefix, k)
 			n[k] = toNode(fv.Interface(), prefix)
 		case reflect.Slice:
 			et := ft.Type.Elem()
 
 			switch et.Kind() {
 			case reflect.Struct:
-				fmt.Printf("%s%s: []struct\n", prefix, k)
+				//fmt.Printf("%s%s: []struct\n", prefix, k)
 				n[k] = []node{toNode(reflect.New(et).Elem().Interface(), prefix)}
 			default:
-				fmt.Printf("%s%s: []%s\n", prefix, k, et.Kind())
-				n[k] = reflect.SliceOf(et)
+				//fmt.Printf("%s%s: []%s\n", prefix, k, et.Kind())
+				//n[k] = reflect.SliceOf(et)
+				n[k] = fv.Interface()
+				fmt.Printf("%s %T %#v\n", reflect.TypeOf(n[k]).Kind(), n[k], n[k])
 			}
 		default:
-			fmt.Printf("%s%s: %s\n", prefix, k, fv.Kind())
+			//fmt.Printf("%s%s: %s\n", prefix, k, fv.Kind())
 			n[k] = fv.Interface()
 		}
 	}
@@ -96,6 +98,8 @@ func toNode(s interface{}, prefix string) node {
 }
 
 func checkNode(n, g node, c context, v *validator) {
+	fmt.Printf("NODE: %#v\n", n)
+	fmt.Printf("GOOD: %#v\n", g)
 	for k, sn := range n {
 		c := c
 
@@ -114,22 +118,53 @@ func checkNode(n, g node, c context, v *validator) {
 			}
 		}
 
-		if sc, ok := g[k]; ok {
-			fmt.Printf("got %T, want %T\n", sn, sc)
-			if sn, ok := sn.(map[interface{}]interface{}); ok {
-				checkNode(sn, sc.(node), c, v)
-			} else {
-				fmt.Printf("%#v\n", sn)
-				if reflect.TypeOf(sn).Kind() == reflect.Slice && reflect.TypeOf(sc).Kind() == reflect.Slice {
-					fmt.Printf("%v %v\n", reflect.TypeOf(sn).Elem(), reflect.TypeOf(sc).Elem())
-				} else {
-					if !reflect.TypeOf(sn).ConvertibleTo(reflect.TypeOf(sc)) {
-						v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sc))
-					}
-				}
-			}
-		} else {
+		fmt.Printf("KEY: %s\n", k)
+		// Is the key found?
+		sc, ok := g[k]
+		if !ok {
 			v.report.Warning(c.line, fmt.Sprintf("unrecognized key %q", k))
+			continue
+		}
+		if sc == nil {
+			panic(fmt.Sprintf("reference node %q is nil", k))
+		}
+
+		// If its a struct, we have to go deeper...
+		fmt.Printf(" got %q (%T), want %q (%T)\n", sn, sn, sc, sc)
+		//nsn, nk := sn.(node)
+		nsc, ck := sc.(node)
+		nsn, nk := sn.(map[interface{}]interface{})
+		//nsc, ck := sc.(map[interface{}]interface{})
+		fmt.Printf("%v %v\n", nk, ck)
+		//if sn, ok := sn.(map[interface{}]interface{}); ok {
+		if nk && ck {
+			fmt.Printf(" good: got %#v (%T), want %s (%T)\n", nsn, nsn, nsc, nsc)
+			checkNode(nsn, nsc, c, v)
+			continue
+		}
+
+		// The []string for ssh_authorized_keys is some sort of struct type
+		// (validate.node{"ssh_authorized_keys":(*reflect.rtype)}) instead of a slice
+		// of strings.
+		// ["good"] ([]interface {}) = []interface {}{"good"}
+
+		// Is it the right type?
+		fmt.Printf(" bad: got %#v (%T), want %q (%T)\n", sn, sn, sc, sc)
+		sct := reflect.TypeOf(sc)
+		snt := reflect.TypeOf(sn)
+		if sn == nil {
+			v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sc))
+			continue
+		}
+
+		fmt.Printf(" %T %T\n", sn, sc)
+		if snt.Kind() == reflect.Slice && sct.Kind() == reflect.Slice {
+			fmt.Printf(" SLICE: %v %v\n", snt.Elem(), sct.Elem())
+		} else {
+			fmt.Printf(" %v %v\n", snt, sct)
+			if !snt.ConvertibleTo(sct) {
+				v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sc))
+			}
 		}
 	}
 }
