@@ -67,8 +67,6 @@ func TestNodes(t *testing.T) {
 		},
 		{
 			c: "users:\n  - bad",
-			// FIX THIS
-			//e: []Entry{{1, "incorrect type for \"users\" (want []system.User)", warningEntry}},
 			e: []Entry{{1, "incorrect type for \"users\" (want []validate.node)", warningEntry}},
 		},
 		{
