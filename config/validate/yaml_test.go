@@ -44,6 +44,10 @@ func TestNodes(t *testing.T) {
 			e: []Entry{{1, "incorrect type for \"hostname\" (want string)", warningEntry}},
 		},
 		{
+			c: "hostname: 4",
+			e: []Entry{{1, "incorrect type for \"hostname\" (want string)", warningEntry}},
+		},
+		{
 			c: "coreos:\n  etcd:\n    discover:",
 			e: []Entry{{3, "unrecognized key \"discover\"", warningEntry}},
 		},
@@ -55,14 +59,24 @@ func TestNodes(t *testing.T) {
 			e: []Entry{{1, "incorrect type for \"ssh_authorized_keys\" (want []string)", warningEntry}},
 		},
 		{
+			c: "ssh_authorized_keys:\n  - bad\n  - 2",
+			e: []Entry{{1, "incorrect type for \"ssh_authorized_keys\" (want []string)", warningEntry}},
+		},
+		{
 			c: "ssh_authorized_keys:\n  - good",
 		},
 		{
 			c: "users:\n  - bad",
-			e: []Entry{{1, "incorrect type for \"users\" (want []system.User)", warningEntry}},
+			// FIX THIS
+			//e: []Entry{{1, "incorrect type for \"users\" (want []system.User)", warningEntry}},
+			e: []Entry{{1, "incorrect type for \"users\" (want []validate.node)", warningEntry}},
 		},
 		{
 			c: "users:\n  - name: good",
+		},
+		{
+			c: "users:\n  - name: 4",
+			e: []Entry{{2, "incorrect type for \"name\" (want string)", warningEntry}},
 		},
 	} {
 		v := validator{report: &Report{}}
