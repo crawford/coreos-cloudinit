@@ -44,8 +44,11 @@ func TestNodes(t *testing.T) {
 			e: []Entry{{1, "incorrect type for \"hostname\" (want string)", warningEntry}},
 		},
 		{
-			c: "hostname: 4",
+			c: "hostname:\n  - bad",
 			e: []Entry{{1, "incorrect type for \"hostname\" (want string)", warningEntry}},
+		},
+		{
+			c: "hostname: 4",
 		},
 		{
 			c: "coreos:\n  etcd:\n    discover:",
@@ -59,8 +62,7 @@ func TestNodes(t *testing.T) {
 			e: []Entry{{1, "incorrect type for \"ssh_authorized_keys\" (want []string)", warningEntry}},
 		},
 		{
-			c: "ssh_authorized_keys:\n  - bad\n  - 2",
-			e: []Entry{{1, "incorrect type for \"ssh_authorized_keys\" (want []string)", warningEntry}},
+			c: "ssh_authorized_keys:\n  - good\n  - 2",
 		},
 		{
 			c: "ssh_authorized_keys:\n  - good",
@@ -73,15 +75,11 @@ func TestNodes(t *testing.T) {
 			c: "users:\n  - name: good",
 		},
 		{
-			c: "users:\n  - name: 4",
-			e: []Entry{{2, "incorrect type for \"name\" (want string)", warningEntry}},
-		},
-		{
 			c: "coreos:\n  units:\n    - bad",
 			e: []Entry{{2, "incorrect type for \"units\" (want []validate.node)", warningEntry}},
 		},
 		{
-			c: "coreos:\n  units:\n    - name: 4",
+			c: "coreos:\n  units:\n    - name:\n      - bad",
 			e: []Entry{{3, "incorrect type for \"name\" (want string)", warningEntry}},
 		},
 		{
