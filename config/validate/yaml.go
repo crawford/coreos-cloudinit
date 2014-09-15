@@ -172,23 +172,22 @@ func isSameType(n, g reflect.Value) bool {
 		n = n.Elem()
 	}
 
+	if n.Kind() != g.Kind() {
+		return false
+	}
+
 	switch g.Kind() {
+	case reflect.Bool:
 	case reflect.String:
-		return n.Kind() == reflect.String
-
 	case reflect.Slice:
-		if n.Kind() != reflect.Slice {
-			return false
-		}
-
 		sg := reflect.Indirect(reflect.New(g.Type().Elem()))
 		for i := 0; i < n.Len(); i++ {
 			if !isSameType(n.Index(i), sg) {
 				return false
 			}
 		}
-		return true
 	default:
 		panic(fmt.Sprintf("unhandled kind %s", g.Kind()))
 	}
+	return true
 }

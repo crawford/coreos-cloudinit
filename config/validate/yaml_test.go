@@ -85,7 +85,11 @@ func TestNodes(t *testing.T) {
 			e: []Entry{{3, "incorrect type for \"name\" (want string)", warningEntry}},
 		},
 		{
-			c: "coreos:\n  units:\n    - name: test.service",
+			c: "coreos:\n  units:\n    - enable: bad",
+			e: []Entry{{3, "incorrect type for \"enable\" (want bool)", warningEntry}},
+		},
+		{
+			c: "coreos:\n  units:\n    - name: test.service\n    - enable: true",
 		},
 	} {
 		v := validator{report: &Report{}}
