@@ -19,7 +19,7 @@ var (
 	}
 	yamlLineError = regexp.MustCompile(`^YAML error: line (?P<line>[[:digit:]]+): (?P<msg>.*)$`)
 	yamlError     = regexp.MustCompile(`^YAML error: (?P<msg>.*)$`)
-	yamlKey       = regexp.MustCompile(`^ *-? ?(?P<key>.*):`)
+	yamlKey       = regexp.MustCompile(`^ *-? ?(?P<key>.*?):`)
 )
 
 func syntax(c context, v *validator) {
@@ -98,12 +98,12 @@ func checkNode(n, g node, c context, v *validator) {
 
 		// Figure out on which line the key resides
 		for {
-			tokens := strings.SplitN(string(c.content), "\n", 2)
-			line := tokens[0]
-			if line == "" {
+			if len(c.content) == 0 {
 				panic(fmt.Sprintf("key %q not found in content", k))
 			}
 
+			tokens := strings.SplitN(string(c.content), "\n", 2)
+			line := tokens[0]
 			if len(tokens) > 1 {
 				c.content = []byte(tokens[1])
 			} else {
