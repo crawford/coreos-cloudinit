@@ -47,6 +47,7 @@ var (
 		workspace      string
 		sshKeyName     string
 		oem            string
+		validate       bool
 	}{}
 )
 
@@ -64,6 +65,7 @@ func init() {
 	flag.StringVar(&flags.convertNetconf, "convert-netconf", "", "Read the network config provided in cloud-drive and translate it from the specified format into networkd unit files")
 	flag.StringVar(&flags.workspace, "workspace", "/var/lib/coreos-cloudinit", "Base directory coreos-cloudinit should use to store data")
 	flag.StringVar(&flags.sshKeyName, "ssh-key-name", config.DefaultSSHKeyName, "Add SSH keys to the system with the given name")
+	flag.BoolVar(&flags.validate, "validate", false, "[EXPERIMENTAL] Validate the user-data but do not apply it to the system")
 }
 
 type oemConfig map[string]string
@@ -137,15 +139,23 @@ func main() {
 	}
 
 	if report, err := validate.Validate(userdataBytes); err == nil {
+		ret := 0
 		for _, e := range report.Entries() {
 			if e.IsError() {
 				fmt.Printf("Error: %s\n", e)
 			} else if e.IsWarning() {
 				fmt.Printf("Warning: %s\n", e)
 			}
+			ret = 1
+		}
+		if flags.validate {
+			os.Exit(ret)
 		}
 	} else {
 		fmt.Printf("Failed while validating user_data (%q)\n", err)
+		if flags.validate {
+			os.Exit(1)
+		}
 	}
 
 	fmt.Printf("Fetching meta-data from datasource of type %q\n", ds.Type())
