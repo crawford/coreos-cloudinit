@@ -30,18 +30,18 @@ type CloudConfigUnit interface {
 type CloudConfig struct {
 	SSHAuthorizedKeys []string `yaml:"ssh_authorized_keys"`
 	Coreos            struct {
-		Etcd   EtcdEnvironment
-		Fleet  FleetEnvironment
-		OEM    OEMRelease
-		Update UpdateConfig
-		Units  []system.Unit
-	}
+		Etcd   EtcdEnvironment  `yaml:"etcd"`
+		Fleet  FleetEnvironment `yaml:"fleet"`
+		OEM    OEMRelease       `yaml:"oem"`
+		Update UpdateConfig     `yaml:"update"`
+		Units  []system.Unit    `yaml:"units"`
+	} `yaml:"coreos"`
 	WriteFiles        []system.File `yaml:"write_files"`
-	Hostname          string
-	Users             []system.User
-	ManageEtcHosts    EtcHosts `yaml:"manage_etc_hosts"`
-	NetworkConfigPath string
-	NetworkConfig     string
+	Hostname          string        `yaml:"hostname"`
+	Users             []system.User `yaml:"users"`
+	ManageEtcHosts    EtcHosts      `yaml:"manage_etc_hosts"`
+	NetworkConfigPath string        `yaml:"-"`
+	NetworkConfig     string        `yaml:"-"`
 }
 
 type warner func(format string, v ...interface{})

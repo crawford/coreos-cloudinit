@@ -20,12 +20,12 @@ type UnitManager interface {
 }
 
 type Unit struct {
-	Name    string
-	Mask    bool
-	Enable  bool
-	Runtime bool
-	Content string
-	Command string
+	Name    string `yaml:"name"`
+	Mask    bool   `yaml:"mask"`
+	Enable  bool   `yaml:"enable"`
+	Runtime bool   `yaml:"runtime"`
+	Content string `yaml:"content"`
+	Command string `yaml:"command"`
 
 	// For drop-in units, a cloudinit.conf is generated.
 	// This is currently unbound in YAML (and hence unsettable in cloud-config files)
