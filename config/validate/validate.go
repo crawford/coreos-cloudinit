@@ -1,0 +1,51 @@
+package validate
+
+import (
+	"fmt"
+	"strings"
+)
+
+type validator struct {
+	report Reporter
+	tests  []test
+}
+
+func (v *validator) addRules(c context, rs ...rule) {
+	for _, r := range rs {
+		v.tests = append(v.tests, test{c, r})
+	}
+}
+
+func Validate(config []byte) (Reporter, error) {
+	v := &validator{&Report{}, []test{{context{config, 0}, baseRule}}}
+
+	for len(v.tests) > 0 {
+		t := v.tests[0]
+		v.tests = v.tests[1:]
+
+		if err := func(t test, v *validator) (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("%s", r)
+				}
+			}()
+			t.rule(t.context, v)
+			return nil
+		}(t, v); err != nil {
+			return v.report, err
+		}
+	}
+
+	return v.report, nil
+}
+
+func baseRule(c context, v *validator) {
+	header := strings.SplitN(string(c.content), "\n", 2)[0]
+	if header == "#cloud-config" {
+		v.addRules(c, YamlRules...)
+	} else if strings.HasPrefix("#!", header) {
+
+	} else {
+		v.report.Error(c.line+1, "must be \"#cloud-config\" or \"#!\"")
+	}
+}
