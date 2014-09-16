@@ -38,7 +38,7 @@ type EtcdEnvironment struct {
 }
 
 func (ee EtcdEnvironment) String() string {
-	return environmentString(ee)
+	return "[Service]\n" + environmentString(ee)
 }
 
 // Units creates a Unit file drop-in for etcd, using any configured
