@@ -12,9 +12,9 @@ import (
 
 type File struct {
 	Encoding           string
-	Content            string
-	Owner              string
-	Path               string
+	Content            string `yaml:"content"`
+	Owner              string `yaml:"owner"`
+	Path               string `yaml:"path"`
 	RawFilePermissions string `yaml:"permissions"`
 }
 
