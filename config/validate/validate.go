@@ -43,9 +43,7 @@ func baseRule(c context, v *validator) {
 	header := strings.SplitN(string(c.content), "\n", 2)[0]
 	if header == "#cloud-config" {
 		v.addRules(c, YamlRules...)
-	} else if strings.HasPrefix("#!", header) {
-
-	} else {
+	} else if !strings.HasPrefix("#!", header) {
 		v.report.Error(c.line+1, "must be \"#cloud-config\" or \"#!\"")
 	}
 }
