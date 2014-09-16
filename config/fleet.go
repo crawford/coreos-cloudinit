@@ -1,4 +1,4 @@
-package initialize
+package config
 
 import (
 	"github.com/coreos/coreos-cloudinit/system"
