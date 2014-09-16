@@ -5,6 +5,12 @@ import (
 	"strings"
 )
 
+type Reporter interface {
+	Error(line int, message string)
+	Warning(line int, message string)
+	Entries() []Entry
+}
+
 type validator struct {
 	report Reporter
 	tests  []test

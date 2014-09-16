@@ -13,11 +13,11 @@ func TestSyntax(t *testing.T) {
 		{},
 		{
 			c: "	",
-			e: []Entry{{1, "found character that cannot start any token", errorEntry}},
+			e: []Entry{{entryError, "found character that cannot start any token", 1}},
 		},
 		{
 			c: "a:\na",
-			e: []Entry{{2, "could not find expected ':'", errorEntry}},
+			e: []Entry{{entryError, "could not find expected ':'", 2}},
 		},
 	} {
 		v := validator{report: &Report{}}
@@ -37,29 +37,29 @@ func TestNodes(t *testing.T) {
 		{},
 		{
 			c: "test:",
-			e: []Entry{{1, "unrecognized key \"test\"", warningEntry}},
+			e: []Entry{{entryWarning, "unrecognized key \"test\"", 1}},
 		},
 		{
 			c: "hostname:",
-			e: []Entry{{1, "incorrect type for \"hostname\" (want string)", warningEntry}},
+			e: []Entry{{entryWarning, "incorrect type for \"hostname\" (want string)", 1}},
 		},
 		{
 			c: "hostname:\n  - bad",
-			e: []Entry{{1, "incorrect type for \"hostname\" (want string)", warningEntry}},
+			e: []Entry{{entryWarning, "incorrect type for \"hostname\" (want string)", 1}},
 		},
 		{
 			c: "hostname: 4",
 		},
 		{
 			c: "coreos:\n  etcd:\n    discover:",
-			e: []Entry{{3, "unrecognized key \"discover\"", warningEntry}},
+			e: []Entry{{entryWarning, "unrecognized key \"discover\"", 3}},
 		},
 		{
 			c: "coreos:\n  etcd:\n    discovery: good",
 		},
 		{
 			c: "ssh_authorized_keys:\n  bad",
-			e: []Entry{{1, "incorrect type for \"ssh_authorized_keys\" (want []string)", warningEntry}},
+			e: []Entry{{entryWarning, "incorrect type for \"ssh_authorized_keys\" (want []string)", 1}},
 		},
 		{
 			c: "ssh_authorized_keys:\n  - good\n  - 2",
@@ -68,23 +68,27 @@ func TestNodes(t *testing.T) {
 			c: "ssh_authorized_keys:\n  - good",
 		},
 		{
+			c: "users:\n  bad",
+			e: []Entry{{entryWarning, "incorrect type for \"users\" (want []struct)", 1}},
+		},
+		{
 			c: "users:\n  - bad",
-			e: []Entry{{1, "incorrect type for \"users\" (want []validate.node)", warningEntry}},
+			e: []Entry{{entryWarning, "incorrect type for \"users\" (want struct)", 1}},
 		},
 		{
 			c: "users:\n  - name: good",
 		},
 		{
 			c: "coreos:\n  units:\n    - bad",
-			e: []Entry{{2, "incorrect type for \"units\" (want []validate.node)", warningEntry}},
+			e: []Entry{{entryWarning, "incorrect type for \"units\" (want struct)", 2}},
 		},
 		{
 			c: "coreos:\n  units:\n    - name:\n      - bad",
-			e: []Entry{{3, "incorrect type for \"name\" (want string)", warningEntry}},
+			e: []Entry{{entryWarning, "incorrect type for \"name\" (want string)", 3}},
 		},
 		{
 			c: "coreos:\n  units:\n    - enable: bad",
-			e: []Entry{{3, "incorrect type for \"enable\" (want bool)", warningEntry}},
+			e: []Entry{{entryWarning, "incorrect type for \"enable\" (want bool)", 3}},
 		},
 		{
 			c: "coreos:\n  units:\n    - name: test.service\n    - enable: true",

@@ -92,30 +92,29 @@ func toNode(s interface{}, prefix string) node {
 	return n
 }
 
+func findKey(k string, c context) context {
+	for len(c.content) > 0 {
+		tokens := strings.SplitN(string(c.content), "\n", 2)
+		line := tokens[0]
+
+		c.line++
+		if len(tokens) > 1 {
+			c.content = []byte(tokens[1])
+		} else {
+			c.content = []byte{}
+		}
+
+		matches := yamlKey.FindStringSubmatch(line)
+		if len(matches) > 0 && matches[1] == k {
+			return c
+		}
+	}
+	panic(fmt.Sprintf("key %q not found in content", k))
+}
+
 func checkNode(n, g node, c context, v *validator) {
 	for k, sn := range n {
-		c := c
-
-		// Figure out on which line the key resides
-		for {
-			if len(c.content) == 0 {
-				panic(fmt.Sprintf("key %q not found in content", k))
-			}
-
-			tokens := strings.SplitN(string(c.content), "\n", 2)
-			line := tokens[0]
-			if len(tokens) > 1 {
-				c.content = []byte(tokens[1])
-			} else {
-				c.content = []byte{}
-			}
-			c.line++
-
-			matches := yamlKey.FindStringSubmatch(line)
-			if len(matches) > 0 && matches[1] == fmt.Sprint(k) {
-				break
-			}
-		}
+		c := findKey(fmt.Sprint(k), c)
 
 		// Is the key expected?
 		sg, ok := g[k]
@@ -135,13 +134,13 @@ func checkNode(n, g node, c context, v *validator) {
 					if ssn, ok := ssn.(map[interface{}]interface{}); ok {
 						checkNode(ssn, ssg, c, v)
 					} else {
-						v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sg))
+						v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want struct)", k))
 						continue
 					}
 				}
 				continue
 			} else {
-				v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sg))
+				v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want []struct)", k))
 				continue
 			}
 		}
@@ -152,7 +151,7 @@ func checkNode(n, g node, c context, v *validator) {
 				checkNode(sn, sg, c, v)
 				continue
 			} else {
-				v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want %T)", k, sg))
+				v.report.Warning(c.line, fmt.Sprintf("incorrect type for %q (want struct)", k))
 				continue
 			}
 		}

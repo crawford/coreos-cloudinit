@@ -7,14 +7,14 @@ import (
 type entryKind int
 
 const (
-	errorEntry   entryKind = iota
-	warningEntry entryKind = iota
+	entryError   entryKind = iota
+	entryWarning entryKind = iota
 )
 
 type Entry struct {
-	line    int
-	message string
 	kind    entryKind
+	message string
+	line    int
 }
 
 func (e Entry) String() string {
@@ -22,11 +22,11 @@ func (e Entry) String() string {
 }
 
 func (e Entry) IsError() bool {
-	return (e.kind == errorEntry)
+	return (e.kind == entryError)
 }
 
 func (e Entry) IsWarning() bool {
-	return (e.kind == warningEntry)
+	return (e.kind == entryWarning)
 }
 
 type Report struct {
@@ -34,11 +34,11 @@ type Report struct {
 }
 
 func (r *Report) Error(line int, message string) {
-	r.entries = append(r.entries, Entry{line, message, errorEntry})
+	r.entries = append(r.entries, Entry{entryError, message, line})
 }
 
 func (r *Report) Warning(line int, message string) {
-	r.entries = append(r.entries, Entry{line, message, warningEntry})
+	r.entries = append(r.entries, Entry{entryWarning, message, line})
 }
 
 func (r *Report) Entries() []Entry {

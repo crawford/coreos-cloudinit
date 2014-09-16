@@ -1,11 +1,5 @@
 package validate
 
-type Reporter interface {
-	Error(line int, message string)
-	Warning(line int, message string)
-	Entries() []Entry
-}
-
 type context struct {
 	content []byte
 	line    int
