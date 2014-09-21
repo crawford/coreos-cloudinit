@@ -8,14 +8,9 @@ import (
 	"path"
 	"regexp"
 	"sort"
-)
 
-type EnvFile struct {
-	Vars map[string]string
-	// mask File.Content, it shouldn't be used.
-	Content interface{} `json:"-" yaml:"-"`
-	*File
-}
+	"github.com/coreos/coreos-cloudinit/config"
+)
 
 // only allow sh compatible identifiers
 var validKey = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -57,7 +52,7 @@ func mergeEnvContents(old []byte, pending map[string]string) []byte {
 // new values provided in EnvFile.Vars; File.Content is ignored.
 // Existing ordering and any unknown formatting such as comments are
 // preserved. If no changes are required the file is untouched.
-func WriteEnvFile(ef *EnvFile, root string) error {
+func WriteEnvFile(ef *config.EnvFile, root string) error {
 	// validate new keys, mergeEnvContents uses pending to track writes
 	pending := make(map[string]string, len(ef.Vars))
 	for key, value := range ef.Vars {

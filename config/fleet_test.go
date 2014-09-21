@@ -1,28 +1,26 @@
-package initialize
+package config
 
 import (
 	"reflect"
 	"testing"
-
-	"github.com/coreos/coreos-cloudinit/config"
 )
 
 func TestFleetUnit(t *testing.T) {
 	for _, tt := range []struct {
-		cfg  config.FleetEnvironment
+		cfg  FleetEnvironment
 		root string
-		uu   []config.Unit
+		uu   []Unit
 		err  error
 	}{
 		{
-			cfg:  config.FleetEnvironment{},
+			cfg:  FleetEnvironment{},
 			root: "/",
 		},
 		{
-			cfg: config.FleetEnvironment{
+			cfg: FleetEnvironment{
 				PublicIP: "12.34.56.78",
 			},
-			uu: []config.Unit{
+			uu: []Unit{
 				{
 					Name: "fleet.service",
 					Content: `[Service]

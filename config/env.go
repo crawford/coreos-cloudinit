@@ -1,4 +1,4 @@
-package initialize
+package config
 
 import (
 	"fmt"
@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-
-	"github.com/coreos/coreos-cloudinit/system"
 )
 
 const DefaultSSHKeyName = "coreos-cloudinit"
@@ -81,9 +79,9 @@ func (e *Environment) Apply(data string) string {
 	return data
 }
 
-func (e *Environment) DefaultEnvironmentFile() *system.EnvFile {
-	ef := system.EnvFile{
-		File: &system.File{
+func (e *Environment) DefaultEnvironmentFile() *EnvFile {
+	ef := EnvFile{
+		File: &File{
 			Path: "/etc/environment",
 		},
 		Vars: map[string]string{},
@@ -111,7 +109,7 @@ func environmentString(e interface{}) string {
 	et := reflect.TypeOf(e)
 	ev := reflect.ValueOf(e)
 
-	out := "[Service]\n"
+	out := ""
 	for i := 0; i < et.NumField(); i++ {
 		val := ev.Field(i).String()
 		if val != "" {

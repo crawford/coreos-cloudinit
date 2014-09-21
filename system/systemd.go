@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/coreos/coreos-cloudinit/third_party/github.com/coreos/go-systemd/dbus"
+	"github.com/coreos/coreos-cloudinit/config"
 )
 
 func NewUnitManager(root string) UnitManager {
@@ -27,7 +28,7 @@ const fakeMachineID = "42000000000000000000000000000042"
 
 // PlaceUnit writes a unit file at the provided destination, creating
 // parent directories as necessary.
-func (s *systemd) PlaceUnit(u *Unit, dst string) error {
+func (s *systemd) PlaceUnit(u *config.Unit, dst string) error {
 	dir := filepath.Dir(dst)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dir, os.FileMode(0755)); err != nil {
@@ -35,7 +36,7 @@ func (s *systemd) PlaceUnit(u *Unit, dst string) error {
 		}
 	}
 
-	file := File{
+	file := config.File{
 		Path:               filepath.Base(dst),
 		Content:            u.Content,
 		RawFilePermissions: "0644",
@@ -102,7 +103,7 @@ func (s *systemd) DaemonReload() error {
 // /dev/null, analogous to `systemctl mask`.
 // N.B.: Unlike `systemctl mask`, this function will *remove any existing unit
 // file at the location*, to ensure that the mask will succeed.
-func (s *systemd) MaskUnit(unit *Unit) error {
+func (s *systemd) MaskUnit(unit *config.Unit) error {
 	masked := unit.Destination(s.root)
 	if _, err := os.Stat(masked); os.IsNotExist(err) {
 		if err := os.MkdirAll(path.Dir(masked), os.FileMode(0755)); err != nil {
@@ -117,7 +118,7 @@ func (s *systemd) MaskUnit(unit *Unit) error {
 // UnmaskUnit is analogous to systemd's unit_file_unmask. If the file
 // associated with the given Unit is empty or appears to be a symlink to
 // /dev/null, it is removed.
-func (s *systemd) UnmaskUnit(unit *Unit) error {
+func (s *systemd) UnmaskUnit(unit *config.Unit) error {
 	masked := unit.Destination(s.root)
 	ne, err := nullOrEmpty(masked)
 	if os.IsNotExist(err) {

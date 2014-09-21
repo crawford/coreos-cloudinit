@@ -1,37 +1,16 @@
 package system
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
-	"strconv"
+
+	"github.com/coreos/coreos-cloudinit/config"
 )
 
-type File struct {
-	Encoding           string `yaml:"-"`
-	Content            string `yaml:"content"`
-	Owner              string `yaml:"owner"`
-	Path               string `yaml:"path"`
-	RawFilePermissions string `yaml:"permissions"`
-}
-
-func (f *File) Permissions() (os.FileMode, error) {
-	if f.RawFilePermissions == "" {
-		return os.FileMode(0644), nil
-	}
-
-	// Parse string representation of file mode as octal
-	perm, err := strconv.ParseInt(f.RawFilePermissions, 8, 32)
-	if err != nil {
-		return 0, errors.New("Unable to parse file permissions as octal integer")
-	}
-	return os.FileMode(perm), nil
-}
-
-func WriteFile(f *File, root string) (string, error) {
+func WriteFile(f *config.File, root string) (string, error) {
 	if f.Encoding != "" {
 		return "", fmt.Errorf("Unable to write file with encoding %s", f.Encoding)
 	}

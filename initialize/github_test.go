@@ -2,6 +2,8 @@ package initialize
 
 import (
 	"testing"
+
+	"github.com/coreos/coreos-cloudinit/config"
 )
 
 func TestCloudConfigUsersGithubUser(t *testing.T) {
@@ -11,7 +13,7 @@ users:
   - name: elroy
     coreos-ssh-import-github: bcwaldon
 `
-	cfg, err := NewCloudConfig(contents)
+	cfg, err := config.NewCloudConfig(contents)
 	if err != nil {
 		t.Fatalf("Encountered unexpected error: %v", err)
 	}

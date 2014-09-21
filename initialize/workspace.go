@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/coreos-cloudinit/system"
 )
 
@@ -21,7 +22,7 @@ func PrepWorkspace(workspace string) error {
 	return nil
 }
 
-func PersistScriptInWorkspace(script system.Script, workspace string) (string, error) {
+func PersistScriptInWorkspace(script config.Script, workspace string) (string, error) {
 	scriptsPath := path.Join(workspace, "scripts")
 	tmp, err := ioutil.TempFile(scriptsPath, "")
 	if err != nil {
@@ -31,7 +32,7 @@ func PersistScriptInWorkspace(script system.Script, workspace string) (string, e
 
 	relpath := strings.TrimPrefix(tmp.Name(), workspace)
 
-	file := system.File{
+	file := config.File{
 		Path:               relpath,
 		RawFilePermissions: "0744",
 		Content:            string(script),
@@ -41,7 +42,7 @@ func PersistScriptInWorkspace(script system.Script, workspace string) (string, e
 }
 
 func PersistUnitNameInWorkspace(name string, workspace string) error {
-	file := system.File{
+	file := config.File{
 		Path:               path.Join("scripts", "unit-name"),
 		RawFilePermissions: "0644",
 		Content:            name,

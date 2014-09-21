@@ -1,12 +1,12 @@
-package initialize
+package config
 
 import (
 	"fmt"
 	"log"
 	"strings"
-
-	"github.com/coreos/coreos-cloudinit/system"
 )
+
+type Script []byte
 
 func ParseUserData(contents string) (interface{}, error) {
 	if len(contents) == 0 {
@@ -21,7 +21,7 @@ func ParseUserData(contents string) (interface{}, error) {
 
 	if strings.HasPrefix(header, "#!") {
 		log.Printf("Parsing user-data as script")
-		return system.Script(contents), nil
+		return Script(contents), nil
 	} else if header == "#cloud-config" {
 		log.Printf("Parsing user-data as cloud-config")
 		return NewCloudConfig(contents)

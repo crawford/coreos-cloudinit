@@ -6,17 +6,18 @@ import (
 	"path"
 	"testing"
 
+	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/coreos-cloudinit/system"
 )
 
 func TestOEMReleaseWrittenToDisk(t *testing.T) {
-	oem := OEMRelease{
+	oem := system.OEMRelease{config.OEMRelease{
 		ID:           "rackspace",
 		Name:         "Rackspace Cloud Servers",
 		VersionID:    "168.0.0",
 		HomeURL:      "https://www.rackspace.com/cloud/servers/",
 		BugReportURL: "https://github.com/coreos/coreos-overlay",
-	}
+	}}
 	dir, err := ioutil.TempDir(os.TempDir(), "coreos-cloudinit-")
 	if err != nil {
 		t.Fatalf("Unable to create tempdir: %v", err)

@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/coreos/coreos-cloudinit/config"
 )
 
 func TestCloudConfigUsersUrlMarshal(t *testing.T) {
@@ -48,7 +50,7 @@ users:
   - name: elroy
     coreos-ssh-import-url: https://token:x-auth-token@github.enterprise.com/api/v3/polvi/keys
 `
-	cfg, err := NewCloudConfig(contents)
+	cfg, err := config.NewCloudConfig(contents)
 	if err != nil {
 		t.Fatalf("Encountered unexpected error: %v", err)
 	}

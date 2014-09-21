@@ -1,8 +1,4 @@
-package initialize
-
-import (
-	"github.com/coreos/coreos-cloudinit/system"
-)
+package config
 
 type FleetEnvironment struct {
 	AgentTTL                string `yaml:"agent_ttl"                 env:"FLEET_AGENT_TTL"`
@@ -23,15 +19,16 @@ func (fe FleetEnvironment) String() string {
 
 // Units generates a Unit file drop-in for fleet, if any fleet options were
 // configured in cloud-config
-func (fe FleetEnvironment) Units(root string) ([]system.Unit, error) {
-	if environmentLen(fe) == 0 {
+func (fe FleetEnvironment) Units(root string) ([]Unit, error) {
+	content := fe.String()
+	if content == "" {
 		return nil, nil
 	}
-	fleet := system.Unit{
+	fleet := Unit{
 		Name:    "fleet.service",
 		Runtime: true,
 		DropIn:  true,
-		Content: fe.String(),
+		Content: "[Service]\n" + content,
 	}
-	return []system.Unit{fleet}, nil
+	return []Unit{fleet}, nil
 }

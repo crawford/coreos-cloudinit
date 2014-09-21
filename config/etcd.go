@@ -1,8 +1,4 @@
-package initialize
-
-import (
-	"errors"
-)
+package config
 
 type EtcdEnvironment struct {
 	Addr                string `yaml:"addr"                  env:"ETCD_ADDR"`
@@ -40,15 +36,15 @@ func (ee EtcdEnvironment) String() string {
 }
 
 // Units creates a Unit file drop-in for etcd, using any configured options.
-func (ee EtcdEnvironment) Units(root string) ([]system.Unit, error) {
-	if environmentLen(ee) == 0 {
+func (ee EtcdEnvironment) Units(root string) ([]Unit, error) {
+	if content := ee.String(); content == "" {
 		return nil, nil
+	} else {
+		return []Unit{{
+			Name:    "etcd.service",
+			Runtime: true,
+			DropIn:  true,
+			Content: "[Service]\n" + content,
+		}}, nil
 	}
-	etcd := system.Unit{
-		Name:    "etcd.service",
-		Runtime: true,
-		DropIn:  true,
-		Content: ee.String(),
-	}
-	return []system.Unit{etcd}, nil
 }

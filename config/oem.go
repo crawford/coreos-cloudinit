@@ -1,11 +1,8 @@
-package initialize
+package config
 
 import (
 	"fmt"
-	"path"
 	"strings"
-
-	"github.com/coreos/coreos-cloudinit/system"
 )
 
 type OEMRelease struct {
@@ -26,16 +23,4 @@ func (oem OEMRelease) String() string {
 	}
 
 	return strings.Join(fields, "\n") + "\n"
-}
-
-func (oem OEMRelease) File(root string) (*system.File, error) {
-	if oem.ID == "" {
-		return nil, nil
-	}
-
-	return &system.File{
-		Path:               path.Join("etc", "oem-release"),
-		RawFilePermissions: "0644",
-		Content:            oem.String(),
-	}, nil
 }
