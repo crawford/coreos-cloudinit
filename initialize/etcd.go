@@ -2,8 +2,6 @@ package initialize
 
 import (
 	"errors"
-
-	"github.com/coreos/coreos-cloudinit/system"
 )
 
 type EtcdEnvironment struct {
@@ -46,17 +44,6 @@ func (ee EtcdEnvironment) Units(root string) ([]system.Unit, error) {
 	if environmentLen(ee) == 0 {
 		return nil, nil
 	}
-
-	if ee.Name == "" {
-		if machineID := system.MachineID(root); machineID != "" {
-			ee.Name = machineID
-		} else if hostname, err := system.Hostname(); err == nil {
-			ee.Name = hostname
-		} else {
-			return nil, errors.New("Unable to determine default etcd name")
-		}
-	}
-
 	etcd := system.Unit{
 		Name:    "etcd.service",
 		Runtime: true,
