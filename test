@@ -24,6 +24,7 @@ declare -a TESTPKGS=(initialize
                      datasource/metadata/ec2
                      datasource/proc_cmdline
                      datasource/url
+                     datasource/waagent
                      pkg
                      network)
 
