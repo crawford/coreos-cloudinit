@@ -15,6 +15,7 @@ import (
 	"github.com/coreos/coreos-cloudinit/datasource/metadata/ec2"
 	"github.com/coreos/coreos-cloudinit/datasource/proc_cmdline"
 	"github.com/coreos/coreos-cloudinit/datasource/url"
+	"github.com/coreos/coreos-cloudinit/datasource/waagent"
 	"github.com/coreos/coreos-cloudinit/initialize"
 	"github.com/coreos/coreos-cloudinit/pkg"
 	"github.com/coreos/coreos-cloudinit/system"
@@ -34,6 +35,7 @@ var (
 		sources       struct {
 			file                        string
 			configDrive                 string
+			waagent                     string
 			metadataService             bool
 			ec2MetadataService          string
 			cloudSigmaMetadataService   bool
@@ -53,6 +55,7 @@ func init() {
 	flag.BoolVar(&flags.ignoreFailure, "ignore-failure", false, "Exits with 0 status in the event of malformed input from user-data")
 	flag.StringVar(&flags.sources.file, "from-file", "", "Read user-data from provided file")
 	flag.StringVar(&flags.sources.configDrive, "from-configdrive", "", "Read data from provided cloud-drive directory")
+	flag.StringVar(&flags.sources.waagent, "from-waagent", "", "Read data from provided waagent directory")
 	flag.BoolVar(&flags.sources.metadataService, "from-metadata-service", false, "[DEPRECATED - Use -from-ec2-metadata] Download data from metadata service")
 	flag.StringVar(&flags.sources.ec2MetadataService, "from-ec2-metadata", "", "Download EC2 data from the provided url")
 	flag.BoolVar(&flags.sources.cloudSigmaMetadataService, "from-cloudsigma-metadata", false, "Download data from CloudSigma server context")
@@ -80,6 +83,9 @@ var (
 		"rackspace-onmetal": oemConfig{
 			"from-configdrive": "/media/configdrive",
 			"convert-netconf":  "debian",
+		},
+		"azure": oemConfig{
+			"from-waagent": "/var/lib/waagent",
 		},
 	}
 )
@@ -277,6 +283,9 @@ func getDatasources() []datasource.Datasource {
 	}
 	if flags.sources.digitalOceanMetadataService != "" {
 		dss = append(dss, digitalocean.NewDatasource(flags.sources.digitalOceanMetadataService))
+	}
+	if flags.sources.waagent != "" {
+		dss = append(dss, waagent.NewDatasource(flags.sources.waagent))
 	}
 	if flags.sources.procCmdLine {
 		dss = append(dss, proc_cmdline.NewDatasource())
