@@ -58,6 +58,23 @@ func (n node) HumanType() string {
 	}
 }
 
+func (n node) String() string {
+	return n.string("")
+}
+
+func (n node) string(prefix string) string {
+	var s string
+	if n.IsValid() {
+		s = fmt.Sprintf("\x1b[37;1m%s%s: \x1b[0m%v \x1b[30m(line: %d  kind: %v)\x1b[0m\n", prefix, n.name, n.Value.Interface(), n.line, n.Kind())
+	} else {
+		s = fmt.Sprintf("\x1b[37;1m%s%s: \x1b[0;30m(line: %d  kind: %v)\x1b[0m\n", prefix, n.name, n.line, n.Kind())
+	}
+	for _, c := range n.children {
+		s += c.string(prefix + "  ")
+	}
+	return s
+}
+
 // NewNode returns the node representation of the given value. The context
 // will be used in an attempt to determine line numbers for the given value.
 func NewNode(value interface{}, context context) node {
