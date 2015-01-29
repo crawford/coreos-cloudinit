@@ -105,8 +105,8 @@ var (
 			"from-openstack-configdrive": "/media/configdrive",
 		},
 		"rackspace-onmetal": oemConfig{
-			"from-openstack-configdrive": "/media/configdrive",
-			"convert-netconf":            "debian",
+			"from-onmetal-configdrive": "/media/configdrive",
+			"convert-netconf":          "onmetal-openstack",
 		},
 		"azure": oemConfig{
 			"from-waagent": "/var/lib/waagent",
@@ -141,6 +141,7 @@ func main() {
 	case "":
 	case "debian":
 	case "digitalocean":
+	case "onmetal-openstack":
 	default:
 		fmt.Printf("Invalid option to -convert-netconf: '%s'. Supported options: 'debian, digitalocean'\n", flags.convertNetconf)
 		os.Exit(2)
@@ -217,6 +218,8 @@ func main() {
 			ifaces, err = network.ProcessDebianNetconf(metadata.NetworkConfig)
 		case "digitalocean":
 			ifaces, err = network.ProcessDigitalOceanNetconf(metadata.NetworkConfig)
+		case "onmetal-openstack":
+			ifaces, err = network.ProcessOnmetalOpenstackNetconf(metadata.NetworkConfig)
 		default:
 			err = fmt.Errorf("Unsupported network config format %q", flags.convertNetconf)
 		}
