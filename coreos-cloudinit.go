@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/coreos-cloudinit/config"
 	"github.com/coreos/coreos-cloudinit/config/validate"
 	"github.com/coreos/coreos-cloudinit/datasource"
+	"github.com/coreos/coreos-cloudinit/datasource/configdrive/onmetal"
 	"github.com/coreos/coreos-cloudinit/datasource/configdrive/openstack"
 	"github.com/coreos/coreos-cloudinit/datasource/file"
 	"github.com/coreos/coreos-cloudinit/datasource/metadata/cloudsigma"
@@ -53,6 +54,7 @@ var (
 			file                        string
 			configDrive                 string
 			openstackConfigDrive        string
+			onmetalConfigDrive          string
 			waagent                     string
 			metadataService             bool
 			ec2MetadataService          string
@@ -75,6 +77,7 @@ func init() {
 	flag.StringVar(&flags.sources.file, "from-file", "", "Read user-data from provided file")
 	flag.StringVar(&flags.sources.configDrive, "from-configdrive", "", "[DEPRECATED - Use -from-openstack-configdrive] Read data from provided cloud-drive directory")
 	flag.StringVar(&flags.sources.openstackConfigDrive, "from-openstack-configdrive", "", "Read data from provided config-drive directory")
+	flag.StringVar(&flags.sources.onmetalConfigDrive, "from-onmetal-configdrive", "", "Read data from provided config-drive directory")
 	flag.StringVar(&flags.sources.waagent, "from-waagent", "", "Read data from provided waagent directory")
 	flag.BoolVar(&flags.sources.metadataService, "from-metadata-service", false, "[DEPRECATED - Use -from-ec2-metadata] Download data from metadata service")
 	flag.StringVar(&flags.sources.ec2MetadataService, "from-ec2-metadata", "", "Download EC2 data from the provided url")
@@ -276,6 +279,9 @@ func getDatasources() []datasource.Datasource {
 	}
 	if flags.sources.openstackConfigDrive != "" {
 		dss = append(dss, openstack.NewDatasource(flags.sources.openstackConfigDrive))
+	}
+	if flags.sources.onmetalConfigDrive != "" {
+		dss = append(dss, onmetal.NewDatasource(flags.sources.onmetalConfigDrive))
 	}
 	if flags.sources.metadataService {
 		dss = append(dss, ec2.NewDatasource(ec2.DefaultAddress))
