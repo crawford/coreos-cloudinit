@@ -81,50 +81,50 @@ func parseNetwork(netdata packet.NetworkData, nameservers []net.IP) ([]Interface
 		}
 	}
 
-	var b logicalInterface
-	var slaves []string
-	var children []networkInterface
-	opts := map[string]string{
-		"Mode":             "802.3ad",
-		"LACPTransmitRate": "fast",
-		"MIIMonitorSec":    ".2",
-		"UpDelaySec":       ".2",
-		"DownDelaySec":     ".2",
+	bond := bondInterface{
+		logicalInterface: logicalInterface{
+			name: "bond0",
+			config: configMethodStatic{
+				addresses:   addresses,
+				nameservers: nameservers,
+				routes:      routes,
+			},
+		},
+		options: map[string]string{
+			"Mode":             "802.3ad",
+			"LACPTransmitRate": "fast",
+			"MIIMonitorSec":    ".2",
+			"UpDelaySec":       ".2",
+			"DownDelaySec":     ".2",
+		},
 	}
 
+	// Finish variables
 	for _, iface := range netdata.Interfaces {
 		if iface.Name != "chassis0" && iface.Name != "ipmi0" {
-			slaves = append(slaves, iface.Name)
+			bond.slaves = append(bond.slaves, iface.Name)
 			if iface.Name == "enp1s0f0" {
-				b.hwaddr, _ = net.ParseMAC(iface.Mac)
+				bond.hwaddr, _ = net.ParseMAC(iface.Mac)
 			}
 		}
 	}
 
-	b.name = "bond0"
-	b.config = configMethodStatic{
-		addresses:   addresses,
-		nameservers: nameservers,
-		routes:      routes,
-	}
-	bond := bondInterface{b, slaves, opts}
-
-	children = append(children, &bond)
-
 	for _, iface := range netdata.Interfaces {
 		if iface.Name != "chassis0" && iface.Name != "ipmi0" {
-			var i logicalInterface
-			i.name = iface.Name
-			i.config = configMethodStatic{
-				nameservers: nameservers,
+			p := physicalInterface{
+				logicalInterface: logicalInterface{
+					name: iface.Name,
+					config: configMethodStatic{
+						nameservers: nameservers,
+					},
+					children: []networkInterface{&bond},
+				},
 			}
-			i.children = children
 
 			if iface.Name == "enp1s0f0" {
-				i.configDepth = 20
+				p.configDepth = 20
 			}
 
-			p := physicalInterface{i}
 			interfaces = append(interfaces, &p)
 		}
 	}
